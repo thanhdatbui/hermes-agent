@@ -229,7 +229,78 @@ def _compute_relative_dest(skill_dir: Path, bundled_dir: Path) -> Path:
     return SKILLS_DIR / rel
 
 
+# Persistent memo for _dir_hash: {abs_dir: [stat_signature, content_hash]}.
+# Hashing every byte of ~9.5k skill files on each gateway start took minutes on
+# a busy HDD.  A directory whose file list, sizes and mtimes are unchanged
+# returns its previously computed *content* hash, so manifest semantics are
+# unchanged; any stat change falls back to the full content hash.
+_DIR_HASH_CACHE_NAME = ".dir_hash_cache.json"
+_dir_hash_caches: Dict[str, Dict[str, list]] = {}
+_dir_hash_dirty: Set[str] = set()
+
+
+def _dir_hash_cache_path() -> Path:
+    return SKILLS_DIR / _DIR_HASH_CACHE_NAME
+
+
+def _load_dir_hash_cache() -> Dict[str, list]:
+    key = str(_dir_hash_cache_path())
+    cache = _dir_hash_caches.get(key)
+    if cache is None:
+        cache = {}
+        try:
+            data = json.loads(Path(key).read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                cache = data
+        except (OSError, ValueError):
+            pass
+        _dir_hash_caches[key] = cache
+    return cache
+
+
+def _save_dir_hash_cache() -> None:
+    key = str(_dir_hash_cache_path())
+    if key not in _dir_hash_dirty:
+        return
+    try:
+        path = Path(key)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(json.dumps(_dir_hash_caches.get(key, {})), encoding="utf-8")
+        os.replace(tmp, path)
+        _dir_hash_dirty.discard(key)
+    except OSError as e:
+        logger.debug("Could not write dir hash cache %s: %s", key, e)
+
+
+def _dir_stat_signature(directory: Path) -> str:
+    hasher = hashlib.md5()
+    for fpath in sorted(directory.rglob("*")):
+        if fpath.is_file():
+            st = fpath.stat()
+            rel = fpath.relative_to(directory)
+            hasher.update(f"{rel}\0{st.st_size}\0{st.st_mtime_ns}\n".encode("utf-8"))
+    return hasher.hexdigest()
+
+
 def _dir_hash(directory: Path) -> str:
+    """Content hash of a directory, memoized on its stat signature."""
+    try:
+        sig = _dir_stat_signature(directory)
+    except (OSError, IOError):
+        return _dir_hash_uncached(directory)
+    cache = _load_dir_hash_cache()
+    dkey = str(directory.absolute())
+    hit = cache.get(dkey)
+    if isinstance(hit, list) and len(hit) == 2 and hit[0] == sig:
+        return hit[1]
+    content_hash = _dir_hash_uncached(directory)
+    cache[dkey] = [sig, content_hash]
+    _dir_hash_dirty.add(str(_dir_hash_cache_path()))
+    return content_hash
+
+
+def _dir_hash_uncached(directory: Path) -> str:
     """Compute a hash of all file contents in a directory for change detection."""
     hasher = hashlib.md5()
     try:
@@ -706,6 +777,7 @@ def sync_skills(quiet: bool = False) -> dict:
 
     _write_manifest(manifest)
     optional_provenance_backfilled = _backfill_optional_provenance(quiet=quiet)
+    _save_dir_hash_cache()
 
     return {
         "copied": copied,

@@ -7374,7 +7374,25 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         
         if connected_count > 0:
             logger.info("Gateway running with %s platform(s)", connected_count)
-        
+
+        # Prewarm the heavy agent imports (openai SDK, tool modules, run_agent)
+        # on a daemon thread so the first inbound message after a cold start
+        # does not pay minutes of HDD-bound import time.
+        def _prewarm_agent_imports() -> None:
+            _t0 = time.monotonic()
+            try:
+                import openai  # noqa: F401
+                import openai.resources.chat  # noqa: F401
+                import model_tools  # noqa: F401
+                import run_agent  # noqa: F401
+                logger.info("Agent import prewarm done in %.1fs", time.monotonic() - _t0)
+            except Exception as _e:
+                logger.debug("Agent import prewarm failed: %s", _e)
+
+        threading.Thread(
+            target=_prewarm_agent_imports, name="agent-import-prewarm", daemon=True
+        ).start()
+
         # Build initial channel directory for send_message name resolution
         try:
             from gateway.channel_directory import build_channel_directory

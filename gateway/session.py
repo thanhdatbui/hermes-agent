@@ -2165,6 +2165,10 @@ class SessionStore:
             for key, entry in list(self._entries.items()):
                 if entry.suspended:
                     continue
+                # Age check first: only stale entries can be pruned, so only
+                # they need the (psutil-heavy) active-process check below.
+                if entry.updated_at >= cutoff:
+                    continue
                 # Never prune sessions with an active background process
                 # attached — the user may still be waiting on output.
                 # The callback is keyed by session_key (see process_registry.
