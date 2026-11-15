@@ -170,7 +170,10 @@ MEMORY_GUIDANCE = (
     "'Project uses pytest with xdist' ✓ — 'Run tests with pytest -n 4' ✗. "
     "Imperative phrasing gets re-read as a directive in later sessions and can "
     "cause repeated work or override the user's current request. Procedures and "
-    "workflows belong in skills, not memory."
+    "workflows belong in skills, not memory.\n"
+    "STRICT PROHIBITION: TUYỆT ĐỐI CẤM tự ý lưu memory cho các thông số kỹ thuật, cấu hình, "
+    "IP, port, tài khoản, router/PC, hoặc logic đã có code/tool/database/Git. "
+    "Memory CHỈ được phép gọi khi User trực tiếp ra lệnh đích danh ('nhớ cái này', 'lưu vào memory')."
 )
 
 SESSION_SEARCH_GUIDANCE = (

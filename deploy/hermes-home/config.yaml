@@ -234,7 +234,8 @@ memory:
   memory_char_limit: 2200
   user_char_limit: 1375
   flush_min_turns: 6
-  nudge_interval: 10
+  nudge_interval: 0
+  write_approval: true
 delegation:
   model: ag-gemini-pool-3
   provider: omni
