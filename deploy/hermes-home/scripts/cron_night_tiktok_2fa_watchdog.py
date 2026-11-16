@@ -686,7 +686,14 @@ def summarize_gmail(out: str, min_mtime: float) -> dict:
         },
     }
     total = {k: kibe.get(k, 0) + admin.get(k, 0) for k in ("total", "success", "failed", "skip_safe")}
-    return {**total, "failure_breakdown": total_breakdown}
+    return {
+        **total,
+        "failure_breakdown": total_breakdown,
+        "clusters": {
+            "kibe": {**kibe, "failure_breakdown": kibe_breakdown},
+            "admin": {**admin, "failure_breakdown": admin_breakdown},
+        },
+    }
 
 
 def _error_groups(breakdown: dict) -> tuple[dict, dict]:
@@ -717,9 +724,12 @@ def _get_shift_label(now_dt: datetime | None = None) -> str:
 def build_gmail_report(summary: dict, code: int) -> str:
     p, s = _error_groups(summary.get("failure_breakdown") or {})
     shift = _get_shift_label()
+    clusters = summary.get("clusters") or {}
+    kibe, admin = clusters.get("kibe", {}), clusters.get("admin", {})
     lines = [
         f"⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO REG GMAIL {shift}:",
-        f"• Đã hoàn tất: {summary['success']} máy", f"• Bỏ qua an toàn: {summary['skip_safe']} máy",
+        f"• Farm Kibe (Máy 1-80): Hoàn tất {kibe.get('success', 0)} | Bỏ qua {kibe.get('skip_safe', 0)} | Lỗi {kibe.get('failed', 0)}",
+        f"• Farm Admin (Máy 201-280): Hoàn tất {admin.get('success', 0)} | Bỏ qua {admin.get('skip_safe', 0)} | Lỗi {admin.get('failed', 0)}",
         f"• Lỗi nền tảng: {_format_error_group(p)}", f"• Lỗi script: {_format_error_group(s)}",
     ]
     if code != 0 and summary["total"] == 0: lines.append(f"• Lỗi runner: mã thoát {code}")
