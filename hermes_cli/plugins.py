@@ -2084,6 +2084,7 @@ class _PreToolCallDirective:
     action: Optional[str] = None
     message: Optional[str] = None
     rule_key: Optional[str] = None
+    updated_args: Optional[Dict[str, Any]] = None
 
 
 def set_thread_tool_whitelist(
@@ -2158,6 +2159,12 @@ def _get_pre_tool_call_directive_details(
         if not isinstance(result, dict):
             continue
         action = result.get("action")
+        if action == "rewrite" and isinstance(result.get("updated_args"), dict):
+            return _PreToolCallDirective(
+                action="rewrite",
+                message=result.get("notice") or result.get("message"),
+                updated_args=result.get("updated_args"),
+            )
         if action not in ("block", "approve"):
             continue
         message = result.get("message")
@@ -2254,6 +2261,10 @@ def resolve_pre_tool_block(
         tool_call_id=tool_call_id, turn_id=turn_id,
         api_request_id=api_request_id, middleware_trace=middleware_trace,
     )
+    if details.action == "rewrite":
+        if args is not None and details.updated_args is not None:
+            args.update(details.updated_args)
+        return None
     if details.action == "block":
         return details.message
     if details.action == "approve":

@@ -596,6 +596,12 @@ def _parse_response(event: str, stdout: str) -> Optional[Dict[str, Any]]:
         return None
 
     if event == "pre_tool_call":
+        if data.get("action") == "rewrite":
+            return {
+                "action": "rewrite",
+                "updated_args": data.get("updated_args") or {},
+                "notice": data.get("notice") or data.get("message") or "",
+            }
         if data.get("action") == "block":
             return {"action": "block", "message": _block_message(data.get("message"), data.get("reason"))}
         if data.get("decision") == "block":

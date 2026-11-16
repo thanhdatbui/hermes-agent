@@ -78,6 +78,14 @@ class TestParseResponse:
         r = shell_hooks._parse_response("pre_tool_call", '{"decision": "allow"}')
         assert r is None
 
+    def test_pre_tool_call_rewrite_action(self):
+        r = shell_hooks._parse_response("pre_tool_call", '{"action": "rewrite", "updated_args": {"timeout": 60}, "notice": "clamped"}')
+        assert r == {"action": "rewrite", "updated_args": {"timeout": 60}, "notice": "clamped"}
+
+    def test_pre_tool_call_rewrite_fallback_message(self):
+        r = shell_hooks._parse_response("pre_tool_call", '{"action": "rewrite", "updated_args": {}, "message": "msg fallback"}')
+        assert r == {"action": "rewrite", "updated_args": {}, "notice": "msg fallback"}
+
     def test_pre_llm_call_context_passthrough(self):
         r = shell_hooks._parse_response(
             "pre_llm_call", '{"context": "today is Friday"}',
