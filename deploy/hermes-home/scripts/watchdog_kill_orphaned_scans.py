@@ -26,13 +26,26 @@ logging.basicConfig(
 logger = logging.getLogger("watchdog_scans")
 
 TARGET_PROCESSES = {p.lower() for p in ["grep.exe", "rg.exe", "find.exe", "grep", "rg", "find"]}
-MAX_AGE_SECONDS = 180
+MAX_AGE_ORPHAN = 60
+MAX_AGE_ALIVE = 300
 
 def kill_orphaned_scans(dry_run: bool = False):
     now = time.time()
     killed_count = 0
 
-    for proc in psutil.process_iter(['pid', 'name', 'create_time', 'cmdline']):
+    # Buoc 1: Thu thap ban do tien trinh
+    # Snapshot process map for parent validation and anti-PID reuse check
+    proc_map = {}
+    for proc in psutil.process_iter(['pid', 'create_time']):
+        try:
+            info = proc.info
+            if info.get('pid') is not None:
+                proc_map[info['pid']] = info.get('create_time')
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+
+    # Buoc 2: Duyet tien trinh va phan loai orphan vs alive
+    for proc in psutil.process_iter(['pid', 'name', 'create_time', 'cmdline', 'ppid']):
         try:
             pinfo = proc.info
             name = pinfo.get('name')
@@ -47,17 +60,30 @@ def kill_orphaned_scans(dry_run: bool = False):
             if not create_time:
                 continue
 
+            ppid = pinfo.get('ppid')
+            
+            # Determine if parent is alive and valid (anti-PID reuse)
+            parent_alive = False
+            if ppid and ppid in proc_map:
+                parent_create_time = proc_map[ppid]
+                if parent_create_time is not None and parent_create_time <= create_time:
+                    parent_alive = True
+
+            max_age = MAX_AGE_ALIVE if parent_alive else MAX_AGE_ORPHAN
+            reason = "timeout" if parent_alive else "orphan"
+
             age = now - create_time
-            if age > MAX_AGE_SECONDS:
+            # Buoc 3: Tieu diet tien trinh va in alert
+            if age > max_age:
                 pid = pinfo.get('pid')
                 cmdline = " ".join(pinfo.get('cmdline') or [])
                 
                 logger.warning(
-                    f"Found long-running scan process: PID={pid}, Name={name}, Age={age:.1f}s (> {MAX_AGE_SECONDS}s), Cmdline='{cmdline}'"
+                    f"Found long-running scan process ({reason}): PID={pid}, Name={name}, Age={age:.1f}s (> {max_age}s), PPID={ppid}, Cmdline='{cmdline}'"
                 )
 
                 if dry_run:
-                    logger.info(f"[DRY-RUN] Would terminate PID {pid} ({name})")
+                    logger.info(f"[DRY-RUN] Would terminate PID {pid} ({name}) [Reason: {reason}, Age: {age:.1f}s]")
                 else:
                     try:
                         proc.terminate()
@@ -67,8 +93,8 @@ def kill_orphaned_scans(dry_run: bool = False):
                         except psutil.TimeoutExpired:
                             proc.kill()
                             proc.wait(timeout=3)
-                        logger.info(f"Successfully terminated process PID={pid} ({name})")
-                        print(f"ALERT: Successfully terminated process PID={pid} ({name})", flush=True)
+                        logger.info(f"Successfully terminated process PID={pid} ({name}) [Reason: {reason}]")
+                        print(f"ALERT: Terminated PID={pid}, reason={reason}, age={age:.1f}s, cmdline='{cmdline}'", flush=True)
                         killed_count += 1
                     except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess) as e:
                         logger.error(f"Failed to terminate PID {pid} ({name}): {e}")
@@ -82,7 +108,7 @@ def kill_orphaned_scans(dry_run: bool = False):
 
 def main():
     # Buoc 1
-    parser = argparse.ArgumentParser(description="Watchdog to kill orphaned or long-running scan processes (>180s).")
+    parser = argparse.ArgumentParser(description="Watchdog to kill orphaned (>60s) or long-running (>300s) scan processes.")
     parser.add_argument("--dry-run", action="store_true", help="Log processes that exceed the threshold without terminating them.")
     args = parser.parse_args()
 
