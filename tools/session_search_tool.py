@@ -120,21 +120,65 @@ def _order_for_recall(raw_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     )
 
 
-def _shape_message(m: Dict[str, Any], anchor_id: Optional[int] = None) -> Dict[str, Any]:
+def _truncate_text(text: Any, max_len: int) -> Any:
+    """Clamp a string to max_len chars, appending an ellipsis marker when cut."""
+    if not isinstance(text, str) or len(text) <= max_len:
+        return text
+    return text[:max_len] + "…"
+
+
+def _truncate_tool_calls(tool_calls: Any, max_len: int = 150) -> Any:
+    """Clamp tool_calls arguments. Handles lists, JSON strings, and dicts."""
+    if isinstance(tool_calls, str):
+        try:
+            parsed = json.loads(tool_calls)
+            if isinstance(parsed, list):
+                truncated = _truncate_tool_calls(parsed, max_len)
+                return json.dumps(truncated, ensure_ascii=False)
+            return _truncate_text(tool_calls, max_len)
+        except (json.JSONDecodeError, TypeError):
+            return _truncate_text(tool_calls, max_len)
+
+    if not isinstance(tool_calls, list):
+        return tool_calls
+
+    out = []
+    for call in tool_calls:
+        if not isinstance(call, dict):
+            out.append(call)
+            continue
+        call = dict(call)
+        fn = call.get("function")
+        if isinstance(fn, dict) and isinstance(fn.get("arguments"), str):
+            fn = dict(fn)
+            fn["arguments"] = _truncate_text(fn["arguments"], max_len)
+            call["function"] = fn
+        out.append(call)
+    return out
+
+
+def _shape_message(m: Dict[str, Any], anchor_id: Optional[int] = None, bookend: bool = False) -> Dict[str, Any]:
     """Slim a message row for the tool response. Keeps content even if empty."""
+    is_anchor = anchor_id is not None and m.get("id") == anchor_id
+    if bookend:
+        max_len = 300
+    elif is_anchor:
+        max_len = 500
+    else:
+        max_len = 200
     entry = {
         "id": m.get("id"),
         "role": m.get("role"),
-        "content": m.get("content"),
+        "content": _truncate_text(m.get("content"), max_len),
         "timestamp": m.get("timestamp"),
     }
     if m.get("tool_name"):
         entry["tool_name"] = m.get("tool_name")
     if m.get("tool_calls"):
-        entry["tool_calls"] = m.get("tool_calls")
+        entry["tool_calls"] = _truncate_tool_calls(m.get("tool_calls"), 150)
     if m.get("tool_call_id"):
         entry["tool_call_id"] = m.get("tool_call_id")
-    if anchor_id is not None and m.get("id") == anchor_id:
+    if is_anchor:
         entry["anchor"] = True
     # Strip None values to keep payload tight, but always keep content
     # (absent content is meaningful — tool-call-only assistant turns).
@@ -484,9 +528,9 @@ def _title_match_result(
         "matched_role": "session_title",
         "match_message_id": anchor_id,
         "snippet": f"Session title matched: {session_meta.get('title') or title_query}",
-        "bookend_start": [_shape_message(m) for m in (view.get("bookend_start") or messages[:3])],
+        "bookend_start": [_shape_message(m, bookend=True) for m in (view.get("bookend_start") or messages[:3])],
         "messages": [_shape_message(m, anchor_id=anchor_id) for m in (view.get("window") or messages[:5])],
-        "bookend_end": [_shape_message(m) for m in (view.get("bookend_end") or messages[-3:])],
+        "bookend_end": [_shape_message(m, bookend=True) for m in (view.get("bookend_end") or messages[-3:])],
         "messages_before": view.get("messages_before", 0),
         "messages_after": view.get("messages_after", max(len(messages) - 5, 0)),
         "_lineage_root": lineage_root,
@@ -596,9 +640,9 @@ def _discover(
             "matched_role": match_info.get("role"),
             "match_message_id": msg_id,
             "snippet": match_info.get("snippet") or "",
-            "bookend_start": [_shape_message(m) for m in (view.get("bookend_start") or [])],
+            "bookend_start": [_shape_message(m, bookend=True) for m in (view.get("bookend_start") or [])],
             "messages": [_shape_message(m, anchor_id=msg_id) for m in (view.get("window") or [])],
-            "bookend_end": [_shape_message(m) for m in (view.get("bookend_end") or [])],
+            "bookend_end": [_shape_message(m, bookend=True) for m in (view.get("bookend_end") or [])],
             "messages_before": view.get("messages_before", 0),
             "messages_after": view.get("messages_after", 0),
         }

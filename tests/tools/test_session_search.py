@@ -638,3 +638,66 @@ class TestCronDemotion:
         # Interactive rows first, in original relative order; cron last, in
         # original relative order.
         assert [r["id"] for r in ordered] == [2, 4, 5, 1, 3]
+
+
+class TestTruncationAndShaping:
+    def test_truncate_text(self):
+        from tools.session_search_tool import _truncate_text
+        assert _truncate_text("short", 10) == "short"
+        assert _truncate_text("a very long string indeed", 6) == "a very…"
+
+    def test_truncate_tool_calls_list(self):
+        from tools.session_search_tool import _truncate_tool_calls
+        calls = [
+            {
+                "function": {
+                    "name": "foo",
+                    "arguments": "x" * 200
+                }
+            }
+        ]
+        truncated = _truncate_tool_calls(calls, 150)
+        args = truncated[0]["function"]["arguments"]
+        assert len(args) == 151  # 150 chars + '…'
+        assert args.endswith("…")
+
+    def test_truncate_tool_calls_json_string(self):
+        from tools.session_search_tool import _truncate_tool_calls
+        calls = [
+            {
+                "function": {
+                    "name": "foo",
+                    "arguments": "y" * 200
+                }
+            }
+        ]
+        s = json.dumps(calls)
+        truncated_s = _truncate_tool_calls(s, 150)
+        parsed = json.loads(truncated_s)
+        args = parsed[0]["function"]["arguments"]
+        assert len(args) == 151
+        assert args.endswith("…")
+
+    def test_truncate_tool_calls_invalid_string(self):
+        from tools.session_search_tool import _truncate_tool_calls
+        invalid = "not-a-json-list" * 20
+        res = _truncate_tool_calls(invalid, 50)
+        assert res.endswith("…")
+        assert len(res) == 51
+
+    def test_shape_message_bounds(self):
+        from tools.session_search_tool import _shape_message
+        # Bookend message
+        bm = {"id": 1, "role": "user", "content": "a" * 400}
+        shaped_b = _shape_message(bm, bookend=True)
+        assert len(shaped_b["content"]) == 301
+
+        # Anchor message
+        am = {"id": 2, "role": "assistant", "content": "b" * 600}
+        shaped_a = _shape_message(am, anchor_id=2)
+        assert len(shaped_a["content"]) == 501
+
+        # Other message
+        om = {"id": 3, "role": "user", "content": "c" * 300}
+        shaped_o = _shape_message(om)
+        assert len(shaped_o["content"]) == 201
