@@ -1026,6 +1026,10 @@ class TestPromptBuilderConstants:
     def test_default_identity_non_empty(self):
         assert len(DEFAULT_AGENT_IDENTITY) > 50
 
+    def test_default_identity_has_no_branding(self):
+        assert "Hermes Agent" not in DEFAULT_AGENT_IDENTITY
+        assert "Nous Research" not in DEFAULT_AGENT_IDENTITY
+
     def test_platform_hints_known_platforms(self):
         assert "whatsapp" in PLATFORM_HINTS
         assert "whatsapp_cloud" in PLATFORM_HINTS
