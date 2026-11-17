@@ -279,6 +279,7 @@ from plugins.platforms.telegram.telegram_network import (
     parse_fallback_ip_env,
 )
 from utils import atomic_replace, env_float, env_int
+from agent.mojibake import repair_mojibake as _repair_mojibake
 
 _TELEGRAM_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 _TELEGRAM_IMAGE_MIME_TO_EXT = {
@@ -2901,6 +2902,7 @@ class TelegramAdapter(BasePlatformAdapter):
         """
         if not self._bot:
             return None
+        name = self._sanitize_outgoing_text(name)
         try:
             kwargs: Dict[str, Any] = {"chat_id": chat_id, "name": name}
             if icon_color is not None:
@@ -3018,6 +3020,7 @@ class TelegramAdapter(BasePlatformAdapter):
         """Rename a forum topic in a private (DM) chat."""
         if not self._bot:
             return
+        name = self._sanitize_outgoing_text(name)
         try:
             chat_id_arg = int(chat_id)
         except (TypeError, ValueError):
@@ -3944,6 +3947,20 @@ class TelegramAdapter(BasePlatformAdapter):
         else:  # "first" (default)
             return chunk_index == 0
 
+    @staticmethod
+    def _sanitize_outgoing_text(text: str) -> str:
+        """Repair UTF-8 mojibake (cp1252/latin1 double-encoding) before it
+        reaches Telegram. Fail-safe: returns the input unchanged on any error."""
+        if not text or not isinstance(text, str):
+            return text
+        try:
+            fixed = _repair_mojibake(text)
+        except Exception:
+            return text
+        if fixed != text:
+            logger.warning("[telegram] repaired mojibake in outgoing text (%d chars)", len(text))
+        return fixed
+
     async def send(
         self,
         chat_id: str,
@@ -3954,6 +3971,8 @@ class TelegramAdapter(BasePlatformAdapter):
         """Send a message to a Telegram chat."""
         if not self._bot:
             return SendResult(success=False, error="Not connected")
+
+        content = self._sanitize_outgoing_text(content)
 
         # getattr() — tests build adapters via object.__new__() (no __init__).
         if getattr(self, "_send_path_degraded", False):
@@ -4326,6 +4345,8 @@ class TelegramAdapter(BasePlatformAdapter):
         """
         if not self._bot:
             return SendResult(success=False, error="Not connected")
+
+        content = self._sanitize_outgoing_text(content)
 
         # Rich finalize (Bot API 10.1): when the completed content has
         # constructs the legacy MarkdownV2 edit degrades (tables → bullet
@@ -4794,6 +4815,8 @@ class TelegramAdapter(BasePlatformAdapter):
         """
         if not self._bot:
             return SendResult(success=False, error="not_connected")
+
+        content = self._sanitize_outgoing_text(content)
 
         # Rich draft fast-path (Bot API 10.1 sendRichMessageDraft): render the
         # streaming preview with the same raw markdown the final

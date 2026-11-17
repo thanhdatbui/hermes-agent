@@ -2104,10 +2104,18 @@ def _run_job_script(script_path: str) -> tuple[bool, str]:
         cron_env.setdefault("MKL_NUM_THREADS", "1")
         cron_env.setdefault("OMP_NUM_THREADS", "1")
         cron_env.setdefault("NUMEXPR_NUM_THREADS", "1")
+        # Child Python is forced to UTF-8 (PYTHONUTF8=1 from the sanitizer);
+        # decode with UTF-8 too.  Without an explicit encoding, text=True uses
+        # the Windows ANSI codepage (cp1252) and every Vietnamese char in cron
+        # output becomes mojibake ("PhÃ¡t hiá»‡n") that then poisons the
+        # delivered message and any agent context it lands in.
+        cron_env.setdefault("PYTHONIOENCODING", "utf-8")
         result = subprocess.run(
             argv,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=script_timeout,
             cwd=str(path.parent),
             env=cron_env,

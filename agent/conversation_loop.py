@@ -4482,6 +4482,22 @@ def run_conversation(
                 else:
                     assistant_message.content = str(raw)
 
+            # Some upstream models (seen with antigravity gemini-3.8-flash-
+            # tiered, 2026-11-17) intermittently emit cp1252 mojibake
+            # ("thÃªm" for "thêm"), mostly inside tool-call arguments.  Repair
+            # it before tools run or the message is persisted, otherwise it
+            # snowballs through in-context mimicry.
+            try:
+                from agent.mojibake import repair_assistant_message
+                _moji_fixed = repair_assistant_message(assistant_message)
+                if _moji_fixed:
+                    logger.warning(
+                        "Repaired mojibake in %d field(s) of model response (model=%s)",
+                        _moji_fixed, agent.model,
+                    )
+            except Exception:
+                pass
+
             try:
                 from hermes_cli.plugins import (
                     has_hook,

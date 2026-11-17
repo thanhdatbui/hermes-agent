@@ -31,7 +31,10 @@ support.
 
 import json
 import logging
+import re
 from typing import Any, Dict, List, Optional, Union
+
+from agent.mojibake import repair_mojibake
 
 # Sources that are excluded from session browsing/searching by default.
 # Third-party integrations tag their sessions with HERMES_SESSION_SOURCE=tool;
@@ -120,9 +123,87 @@ def _order_for_recall(raw_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     )
 
 
+# Mojibake detection: UTF-8 multi-byte sequences mistakenly decoded as
+# Windows-1252/Latin-1, producing runs of Ã/Â-style lead bytes followed by
+# their high-range continuation-byte artifacts (e.g. "Ãƒâ€ž", "áº¡").
+_MOJIBAKE_CLUSTER_RE = re.compile(
+    r'[À-ÿ][\u0080-ÿŒ-žƒˆ˜–-…€™]+'
+)
+
+# C0/C1 control characters (minus common whitespace) never show up in
+# legitimate text — only as leftovers from a bad decode. Used to reject a
+# "repaired" candidate that is still partially garbled (nested mojibake).
+_SUSPICIOUS_CONTROL_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]')
+
+# Vietnamese profanity that reliably trips Gemini's safety filter and blocks
+# the whole request outright.
+_PROFANITY_RE = re.compile(r'(?i)\b(clmm|clgt|vcl|đm|dm|đcm|dcm)\b')
+
+
+def _looks_clean(s: str) -> bool:
+    return not _MOJIBAKE_CLUSTER_RE.search(s) and not _SUSPICIOUS_CONTROL_RE.search(s)
+
+
+def _try_repair_mojibake(s: str) -> Optional[str]:
+    """Round-trip through the encoding that likely mis-decoded the original
+    UTF-8 bytes (cp1252 first, then latin1). Returns the repaired string, or
+    None if no single-pass recovery produces clean text.
+    """
+    for enc in ("cp1252", "latin1"):
+        try:
+            candidate = s.encode(enc).decode("utf-8")
+        except (UnicodeDecodeError, UnicodeEncodeError, LookupError):
+            continue
+        if candidate != s and _looks_clean(candidate):
+            return candidate
+    return None
+
+
+def _sanitize_mojibake(text: str) -> str:
+    """Repair recoverable single-pass mojibake; replace unrecoverable or
+    nested mojibake clusters with "[corrupted]" so no garbled tokens ever
+    reach the model (avoids Gemini safety-filter blocks and in-context
+    mimicry of broken text in later turns).
+    """
+    # Sequence-level, fail-safe repair first (handles nested/double encoding).
+    text = repair_mojibake(text)
+    if not _MOJIBAKE_CLUSTER_RE.search(text):
+        return text
+
+    whole = _try_repair_mojibake(text)
+    if whole is not None:
+        return whole
+
+    def _replace(match: "re.Match[str]") -> str:
+        repaired = _try_repair_mojibake(match.group(0))
+        return repaired if repaired is not None else "[corrupted]"
+
+    return _MOJIBAKE_CLUSTER_RE.sub(_replace, text)
+
+
+def _sanitize_profanity(text: str) -> str:
+    """Mask Vietnamese profanity known to trip Gemini's safety filter."""
+    return _PROFANITY_RE.sub("[censored]", text)
+
+
+def _sanitize_text(text: Any) -> Any:
+    """Cleanse mojibake and filter-triggering profanity from recalled text.
+
+    Applied to every string session_search surfaces (message content,
+    tool_calls arguments, snippet, preview) so corrupted old sessions can
+    never poison the model's context or trip provider safety filters.
+    """
+    if not isinstance(text, str) or not text:
+        return text
+    return _sanitize_profanity(_sanitize_mojibake(text))
+
+
 def _truncate_text(text: Any, max_len: int) -> Any:
-    """Clamp a string to max_len chars, appending an ellipsis marker when cut."""
-    if not isinstance(text, str) or len(text) <= max_len:
+    """Sanitize, then clamp a string to max_len chars, appending an ellipsis marker when cut."""
+    if not isinstance(text, str):
+        return text
+    text = _sanitize_text(text)
+    if len(text) <= max_len:
         return text
     return text[:max_len] + "…"
 
@@ -327,7 +408,7 @@ def _list_recent_sessions(db, limit: int, current_session_id: str = None) -> str
                 "started_at": s.get("started_at", ""),
                 "last_active": s.get("last_active", ""),
                 "message_count": s.get("message_count", 0),
-                "preview": s.get("preview", ""),
+                "preview": _sanitize_text(s.get("preview", "")),
             })
             if len(results) >= limit:
                 break
@@ -527,7 +608,7 @@ def _title_match_result(
         "title": session_meta.get("title") or title_query,
         "matched_role": "session_title",
         "match_message_id": anchor_id,
-        "snippet": f"Session title matched: {session_meta.get('title') or title_query}",
+        "snippet": _sanitize_text(f"Session title matched: {session_meta.get('title') or title_query}"),
         "bookend_start": [_shape_message(m, bookend=True) for m in (view.get("bookend_start") or messages[:3])],
         "messages": [_shape_message(m, anchor_id=anchor_id) for m in (view.get("window") or messages[:5])],
         "bookend_end": [_shape_message(m, bookend=True) for m in (view.get("bookend_end") or messages[-3:])],
@@ -639,7 +720,7 @@ def _discover(
             "title": session_meta.get("title") or None,
             "matched_role": match_info.get("role"),
             "match_message_id": msg_id,
-            "snippet": match_info.get("snippet") or "",
+            "snippet": _sanitize_text(match_info.get("snippet") or ""),
             "bookend_start": [_shape_message(m, bookend=True) for m in (view.get("bookend_start") or [])],
             "messages": [_shape_message(m, anchor_id=msg_id) for m in (view.get("window") or [])],
             "bookend_end": [_shape_message(m, bookend=True) for m in (view.get("bookend_end") or [])],

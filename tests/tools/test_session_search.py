@@ -701,3 +701,86 @@ class TestTruncationAndShaping:
         om = {"id": 3, "role": "user", "content": "c" * 300}
         shaped_o = _shape_message(om)
         assert len(shaped_o["content"]) == 201
+
+    def test_sanitize_repairs_single_pass_mojibake(self):
+        """UTF-8 text mis-decoded once as cp1252/latin1 should be fully repaired."""
+        from tools.session_search_tool import _sanitize_text
+        orig = "Chào bạn, đây là tiếng Việt chuẩn"
+        moji_cp1252 = orig.encode("utf-8").decode("cp1252")
+        moji_latin1 = orig.encode("utf-8").decode("latin1")
+        assert _sanitize_text(moji_cp1252) == orig
+        assert _sanitize_text(moji_latin1) == orig
+
+    def test_sanitize_repairs_two_char_mojibake_pairs(self):
+        """A single mis-decoded Vietnamese 2-byte vowel (e.g. 'ú' -> 'Ã'+'º')
+        collapses to a lead byte plus exactly ONE continuation char. That
+        must still be detected and repaired, not skipped because the
+        cluster is short."""
+        from tools.session_search_tool import _sanitize_text, _MOJIBAKE_CLUSTER_RE
+        words = ["lúc", "sáng", "Chính", "phá", "hàng"]
+        for word in words:
+            moji = word.encode("utf-8").decode("cp1252")
+            assert _MOJIBAKE_CLUSTER_RE.search(moji), f"regex missed short cluster in {moji!r}"
+            assert _sanitize_text(moji) == word
+
+    def test_sanitize_repairs_nested_mojibake(self):
+        """Double-encoded mojibake is repaired back to the original text."""
+        from tools.session_search_tool import _sanitize_text
+        once = "ĐANG 100%!".encode("utf-8").decode("latin1")
+        twice = once.encode("utf-8").decode("latin1")
+        assert _sanitize_text(f"**{twice}** đã xong.") == "**ĐANG 100%!** đã xong."
+        nested_cp1252 = "Lỗi phải kiểm tra".encode("utf-8").decode("cp1252", "replace")
+        nested_cp1252 = nested_cp1252.encode("utf-8").decode("cp1252", "replace")
+        assert _sanitize_text(nested_cp1252) == "Lỗi phải kiểm tra"
+
+    def test_sanitize_masks_safety_filter_profanity(self):
+        from tools.session_search_tool import _sanitize_text
+        assert _sanitize_text("mày clmm quá đáng") == "mày [censored] quá đáng"
+        assert _sanitize_text("VCL thật sự") == "[censored] thật sự"
+        assert _sanitize_text("đm cái này") == "[censored] cái này"
+        # Must not false-positive on substrings inside normal words.
+        assert _sanitize_text("domain.com vẫn ổn") == "domain.com vẫn ổn"
+        assert _sanitize_text("cảm ơn nhiều") == "cảm ơn nhiều"
+
+    def test_sanitize_preserves_clean_accented_vietnamese(self):
+        """Normal accented Vietnamese must never be damaged or altered."""
+        from tools.session_search_tool import _sanitize_text
+        clean = "Chào bạn, đây là tiếng Việt chuẩn. Dự án đang chạy ổn định."
+        assert _sanitize_text(clean) == clean
+
+    def test_truncate_text_sanitizes_before_clamping(self):
+        """_truncate_text must sanitize first so a mojibake cluster never
+        gets sliced in half by the length clamp."""
+        from tools.session_search_tool import _truncate_text
+        orig = "Chào bạn, đây là tiếng Việt chuẩn"
+        moji = orig.encode("utf-8").decode("cp1252")
+        assert _truncate_text(moji, 1000) == orig
+
+        profane = "mày clmm quá"
+        assert _truncate_text(profane, 1000) == "mày [censored] quá"
+
+    def test_discover_snippet_is_sanitized(self, db):
+        from tools.session_search_tool import session_search
+        db.create_session("s_moji", source="cli")
+        profane_text = "cái này clmm tệ quá, cần sửa gấp"
+        db.append_message("s_moji", role="user", content=profane_text)
+        db.append_message("s_moji", role="assistant", content="Đã hiểu, sẽ sửa ngay.")
+
+        result = json.loads(session_search(query="sửa gấp", db=db, limit=5))
+        assert result["success"] is True
+        for entry in result["results"]:
+            assert "clmm" not in entry["snippet"]
+
+    def test_list_recent_sessions_preview_is_sanitized(self, db):
+        from tools.session_search_tool import session_search
+        db.create_session("s_preview_moji", source="cli")
+        orig = "Chào bạn, đây là tiếng Việt chuẩn"
+        moji = orig.encode("utf-8").decode("cp1252")
+        db.append_message("s_preview_moji", role="user", content=moji)
+
+        result = json.loads(session_search(db=db))
+        assert result["success"] is True
+        previews = [r["preview"] for r in result["results"] if r["preview"]]
+        for preview in previews:
+            from tools.session_search_tool import _MOJIBAKE_CLUSTER_RE
+            assert not _MOJIBAKE_CLUSTER_RE.search(preview)

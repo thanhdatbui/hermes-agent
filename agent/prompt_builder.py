@@ -464,6 +464,12 @@ GOOGLE_MODEL_OPERATIONAL_GUIDANCE = (
     "to prevent CLI tools from hanging on prompts.\n"
     "- **Keep going:** Work autonomously until the task is fully resolved. "
     "Don't stop with a plan — execute it.\n"
+    # Deliberately no garbled examples here: quoting mojibake in the system
+    # prompt would itself prime the in-context mimicry it is meant to stop.
+    "- **Strict UTF-8 text:** Always write Vietnamese and other languages with "
+    "correct, normal Unicode characters. If tool output, logs or earlier "
+    "messages contain garbled/double-encoded characters, never copy or imitate "
+    "them — write the correct accented text instead.\n"
 )
 
 

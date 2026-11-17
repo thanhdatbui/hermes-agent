@@ -113,6 +113,21 @@ class TestRunJobScript:
         assert success is True
         assert output == "hello from script"
 
+    def test_script_vietnamese_output_is_not_mojibake(self, cron_env):
+        """UTF-8 child output must be decoded as UTF-8, not the Windows
+        ANSI codepage (which produced "PhÃ¡t hiá»‡n" in cron reports)."""
+        from cron.scheduler import _run_job_script
+
+        script = cron_env / "scripts" / "vi.py"
+        script.write_text(
+            'print("[GPM NURTURE ALERT] Phát hiện 5/5 profile lỗi — Đã xong ✓")\n',
+            encoding="utf-8",
+        )
+
+        success, output = _run_job_script(str(script))
+        assert success is True
+        assert output == "[GPM NURTURE ALERT] Phát hiện 5/5 profile lỗi — Đã xong ✓"
+
     def test_script_relative_path(self, cron_env):
         from cron.scheduler import _run_job_script
 
