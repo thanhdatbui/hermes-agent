@@ -130,3 +130,20 @@ def test_shell_hook_spawn_round_trips_utf8(tmp_path):
     res = shell_hooks._spawn(spec, json.dumps({"q": "đệ quy"}, ensure_ascii=False))
     assert res["error"] is None, res
     assert json.loads(res["stdout"])["message"] == "HƯỚNG DẪN: đệ quy"
+
+
+@pytest.mark.parametrize(('broken', 'expected'), [
+    ('BÃO CÃO', 'BÁO CÁO'),
+    ('NGUỒN Gá»C', 'NGUỒN GỐC'),
+    ('Bài há»c trước đây', 'Bài học trước đây'),
+    ('thảm há»a đó', 'thảm họa đó'),
+    ('chi tiết má»i góc khuất', 'chi tiết mọi góc khuất'),
+    ('hiện trưá»ng để mày', 'hiện trường để mày'),
+    ('lượt gá»i Opus', 'lượt gửi Opus'),
+    ('dư nhiá»u', 'dư nhiều'),
+    ('quan trá»ng', 'quan trọng'),
+    ('quota tiá»n thật', 'quota tiền thật'),
+])
+def test_repairs_vietnamese_dropped_cp1252_bytes(broken, expected):
+    assert repair_mojibake(broken) == expected
+    assert has_mojibake(broken)
