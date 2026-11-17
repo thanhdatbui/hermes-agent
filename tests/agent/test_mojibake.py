@@ -1,3 +1,4 @@
+import json
 import pytest
 
 from agent.mojibake import has_mojibake, repair_mojibake
@@ -57,6 +58,9 @@ def test_repairs_repr_escaped_continuation_bytes():
     assert repair_mojibake("bytes \xad here") == "bytes \xad here"
 
 
+# === Assistant-message repair (model responses) ===
+
+
 def test_repair_assistant_message_object_and_dict():
     from types import SimpleNamespace
     from agent.mojibake import repair_assistant_message
@@ -85,3 +89,44 @@ def test_repair_assistant_message_clean_is_noop():
     msg = SimpleNamespace(content="ĐÃ AN TOÀN “NÓ”", tool_calls=None)
     assert repair_assistant_message(msg) == 0
     assert msg.content == "ĐÃ AN TOÀN “NÓ”"
+
+
+# === Tool-output and shell-hook encoding ===
+
+
+def test_tool_result_message_repairs_mojibake():
+    from agent.tool_dispatch_helpers import make_tool_result_message
+
+    moji = "HƯỚNG DẪN: grep đệ quy".encode("utf-8").decode("cp1252")
+    msg = make_tool_result_message("terminal", '{"error": "%s"}' % moji, "call_1")
+    assert "HƯỚNG DẪN: grep đệ quy" in msg["content"]
+
+    parts = [{"type": "text", "text": moji}, {"type": "image_url", "image_url": {"url": "x"}}]
+    msg = make_tool_result_message("terminal", parts, "call_2")
+    flat = json.dumps(msg["content"], ensure_ascii=False)
+    assert "HƯỚNG DẪN" in flat and "image_url" in flat
+
+
+def test_tool_result_message_clean_content_unchanged():
+    from agent.tool_dispatch_helpers import make_tool_result_message
+
+    clean = '{"output": "ĐÃ AN TOÀN “NÓ” — xong"}'
+    assert make_tool_result_message("terminal", clean, "c")["content"] == clean
+
+
+def test_shell_hook_spawn_round_trips_utf8(tmp_path):
+    import sys
+    from agent import shell_hooks
+
+    script = tmp_path / "hook.py"
+    script.write_text(
+        "import sys, json\n"
+        "data = json.loads(sys.stdin.read())\n"
+        "print(json.dumps({'message': 'HƯỚNG DẪN: ' + data['q']}, ensure_ascii=False))\n",
+        encoding="utf-8",
+    )
+    cmd = f'"{sys.executable}" "{script}"'.replace("\\", "/")
+    spec = shell_hooks.ShellHookSpec(event="pre_tool_call", command=cmd, matcher=None)
+    res = shell_hooks._spawn(spec, json.dumps({"q": "đệ quy"}, ensure_ascii=False))
+    assert res["error"] is None, res
+    assert json.loads(res["stdout"])["message"] == "HƯỚNG DẪN: đệ quy"

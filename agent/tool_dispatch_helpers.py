@@ -428,6 +428,43 @@ def _trajectory_normalize_msg(msg: Dict[str, Any]) -> Dict[str, Any]:
     return msg
 
 
+def _repair_tool_content_mojibake(name: str, content: Any) -> Any:
+    """Repair UTF-8 mojibake in tool output before it enters the context.
+
+    Windows subprocesses (hooks, cron, CLI tools) whose output gets decoded
+    with the ANSI codepage hand the model garbled text ("HÆ¯á»šNG DáºªN"),
+    which primes it to imitate the corruption in its own replies.  Handles
+    plain strings and multimodal text parts; never raises.
+    """
+    try:
+        from agent.mojibake import repair_mojibake
+
+        # Step 1: plain string output.
+        if isinstance(content, str):
+            fixed = repair_mojibake(content)
+        # Step 2: multimodal output -- repair text parts, keep the rest.
+        elif isinstance(content, list):
+            fixed = []
+            for part in content:
+                if (
+                    isinstance(part, dict)
+                    and part.get("type") == "text"
+                    and isinstance(part.get("text"), str)
+                ):
+                    part = {**part, "text": repair_mojibake(part["text"])}
+                fixed.append(part)
+            if fixed == content:
+                return content
+        else:
+            return content
+        # Step 3: log so a repaired tool output stays traceable.
+        if fixed != content:
+            logger.info("Repaired mojibake in output of tool %s", name)
+        return fixed
+    except Exception:
+        return content
+
+
 def make_tool_result_message(
     name: str,
     content: Any,
@@ -454,6 +491,7 @@ def make_tool_result_message(
     The outer list itself is rebuilt rather than returned by identity, so
     callers should compare by value, not by ``is``.
     """
+    content = _repair_tool_content_mojibake(name, content)
     wrapped = _maybe_wrap_untrusted(name, content)
     message = {
         "role": "tool",

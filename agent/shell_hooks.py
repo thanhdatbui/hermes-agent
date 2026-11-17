@@ -458,6 +458,13 @@ def _spawn(spec: ShellHookSpec, stdin_json: str) -> Dict[str, Any]:
 
     t0 = time.monotonic()
     _popen_kwargs = {"creationflags": windows_hide_flags()} if IS_WINDOWS else {}
+    # Force UTF-8 on both ends of the pipe.  Without an explicit encoding,
+    # text=True uses the Windows ANSI codepage (cp1252): hook output such as
+    # "HƯỚNG DẪN" came back as mojibake and was injected into the model's
+    # context, and non-ASCII stdin payloads were mis-encoded for the hook.
+    _hook_env = dict(os.environ)
+    _hook_env.setdefault("PYTHONUTF8", "1")
+    _hook_env.setdefault("PYTHONIOENCODING", "utf-8")
     try:
         proc = subprocess.run(
             argv,
@@ -465,6 +472,9 @@ def _spawn(spec: ShellHookSpec, stdin_json: str) -> Dict[str, Any]:
             capture_output=True,
             timeout=spec.timeout,
             text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=_hook_env,
             shell=False,
             **_popen_kwargs,
         )

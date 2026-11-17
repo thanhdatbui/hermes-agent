@@ -93,16 +93,19 @@ def repair_mojibake(text: str) -> str:
     try:
         out = text
         repaired = False
+        # Step 1: patch byte-loss leftovers that are never legitimate.
         if "�" in out:
             # "Ä�" / "â€�" / "ï¸�" are never legitimate: always patch.
             for pattern, repl in _LEFTOVERS:
                 out = re.sub(pattern.pattern.replace("�?", "�"), repl, out)
+        # Step 2: decode mojibake sequences, repeating to undo nesting.
         for _ in range(_MAX_PASSES):
             new = _SEQ_RE.sub(_decode_seq, out)
             if new == out:
                 break
             repaired = True
             out = new
+        # Step 3: only in text proven to be mojibake, patch lossy leftovers.
         if repaired:
             # Only in text proven to be mojibake: patch lossy leftovers.
             for pattern, repl in _LEFTOVERS:
@@ -136,6 +139,7 @@ def repair_assistant_message(message) -> int:
     """
     changed = 0
     try:
+        # Step 1: repair free-text fields.
         for key in ("content", "reasoning", "reasoning_content"):
             val = _get(message, key)
             if isinstance(val, str) and val:
@@ -143,6 +147,7 @@ def repair_assistant_message(message) -> int:
                 if fixed != val:
                     _set(message, key, fixed)
                     changed += 1
+        # Step 2: repair tool-call arguments before any tool runs.
         for tc in _get(message, "tool_calls") or []:
             fn = _get(tc, "function")
             if fn is None:

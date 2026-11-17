@@ -62,6 +62,7 @@ def main():
     ap.add_argument("--verbose", type=int, default=0, help="print N earliest changes")
     a = ap.parse_args()
 
+    # Step 1: open the DB and collect every value that needs repair.
     con = sqlite3.connect(a.db, timeout=60)
     con.execute("PRAGMA busy_timeout=60000")
     have = {r[1] for r in con.execute("PRAGMA table_info(messages)")}
@@ -84,6 +85,7 @@ def main():
                 if new != title:
                     changes.append(("sessions", sid, "title", title, new))
 
+    # Step 2: report (dry run stops here).
     rows = {(t, i) for t, i, *_ in changes}
     print(f"{len(changes)} values in {len(rows)} rows need repair")
     if a.verbose:
@@ -92,6 +94,7 @@ def main():
             print(time.strftime("%m-%d %H:%M:%S", time.localtime(tmap.get(i, 0))), t, i, col, repr(old[:100]))
     if not a.apply or not changes:
         return
+    # Step 3: back up the originals, then apply in one transaction.
     backup = os.path.join(os.path.dirname(os.path.realpath(a.db)),
                           f"mojibake_backup_{int(time.time())}.jsonl")
     with open(backup, "w", encoding="utf-8") as f:
