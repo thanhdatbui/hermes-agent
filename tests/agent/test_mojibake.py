@@ -148,6 +148,40 @@ _VIETNAMESE_CLEAN = [
 
 def _gen_viet_test_data():
     """Generate (broken, expected) pairs from canonical clean Vietnamese."""
+
+
+def test_new_viet_dropped_patterns():
+    samples = [
+        ("Ä\u00f3n", "Đón"),
+        ("Ä‘\u00f3n", "đón"),
+        ("Ä\u00f4n", "Đôn"),
+        ("Ä‘\u00f4n", "đôn"),
+        ("Ä\ufffdÆ¡n", "Đơn"),
+        ("Ä‘Æ¡n", "đơn"),
+        ("Giá»\ufffd", "Giờ"),
+        ("giá»\ufffd", "giờ"),
+        ("B\u00e1»\ufffd?", "Bỏ"),
+        ("b\u00e1»\ufffd?", "bỏ"),
+        ("B\u00c3\u00b2", "Bò"),
+        ("b\u00c3\u00b2", "bò"),
+        ("Ä\u01b0\u00e1\u00bb\ufffdng", "Đường"),
+        ("Ä‘\u01b0\u00e1\u00bb\ufffdng", "đường"),
+        ("V\u00e1\u00bb\ufffd?", "Về"),
+        ("v\u00e1\u00bb\ufffd?", "về"),
+        ("H\u00e1\u00bb\ufffd?", "Hỗ"),
+        ("h\u00e1\u00bb\ufffd?", "hỗ"),
+        ("L\u00e1\u00bb\ufffd?t", "Lót"),
+        ("l\u00e1\u00bb\ufffd?t", "lót"),
+        ("á»\ufffd?c l\u00e1\u00bb\ufffd?ng", "ốc lỏng"),
+        ("Á»\ufffd?c l\u00e1\u00bb\ufffd?ng", "Ốc lỏng"),
+        ("S\u00e1\u00bb\ufffd? c\u00e1\u00bb\ufffd?", "Sự cố"),
+        ("s\u00e1\u00bb\ufffd? c\u00e1\u00bb\ufffd?", "sự cố"),
+    ]
+    for broken, expected in samples:
+        assert repair_mojibake(broken) == expected
+
+def _gen_viet_test_data():
+    """Generate (broken, expected) pairs from canonical clean Vietnamese."""
     return [
         (clean.encode('utf-8').decode('cp1252', 'replace'), clean)
         for clean in _VIETNAMESE_CLEAN
