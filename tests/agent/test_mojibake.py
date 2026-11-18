@@ -172,3 +172,50 @@ def test_repairs_vietnamese_dropped_cp1252_bytes(broken, expected):
 def test_repair_cp1252_replacement_char_loss_regression(sample, expected, is_mojibake):
     assert has_mojibake(sample) == is_mojibake
     assert repair_mojibake(sample) == expected
+
+
+_VIET_DROPPED_WORD_CASES = [
+    ("Trưá»\ufffdng", "Trường"), ("Trưá»ng", "Trường"),
+    ("trưá»\ufffdng", "trường"), ("trưá»ng", "trường"),
+    ("lưá»\ufffdi", "lười"), ("lưá»i", "lười"),
+    ("Đưá»\ufffdc", "Được"), ("Đưá»c", "Được"),
+    ("đưá»\ufffdc", "được"), ("đưá»c", "được"),
+    ("Điá»\ufffdu", "Điều"), ("Điá»u", "Điều"),
+    ("điá»\ufffdu", "điều"), ("điá»u", "điều"),
+    ("Tiá»\ufffdn", "Tiền"), ("Tiá»n", "Tiền"),
+    ("tiá»\ufffdn", "tiền"), ("tiá»n", "tiền"),
+    ("Đá»\ufffdc", "Đọc"), ("Đá»c", "Đọc"),
+    ("đá»\ufffdc", "đọc"), ("đá»c", "đọc"),
+    ("Thá»\ufffdi", "Thời"), ("Thá»i", "Thời"),
+    ("thá»\ufffdi", "thời"), ("thá»i", "thời"),
+    ("Lá»\ufffdng", "Lồng"), ("Lá»ng", "Lồng"),
+    ("lá»\ufffdng", "lồng"), ("lá»ng", "lồng"),
+    ("Ngá»\ufffdng", "Ngóng"), ("Ngá»ng", "Ngóng"),
+    ("ngá»\ufffdng", "ngóng"), ("ngá»ng", "ngóng"),
+    ("lá»\ufffdi", "lời"), ("lá»i", "lời"),
+    ("há»\ufffdi", "hỏi"), ("há»i", "hỏi"),
+    ("Đá»\ufffdu", "Đều"), ("Đá»u", "Đều"),
+    ("đá»\ufffdu", "đều"), ("đá»u", "đều"),
+]
+
+
+@pytest.mark.parametrize(("broken", "expected"), _VIET_DROPPED_WORD_CASES)
+def test_repairs_viet_dropped_phonetic_patterns(broken, expected):
+    assert repair_mojibake(broken) == expected
+
+
+@pytest.mark.parametrize("phrase", [
+    "trả lời",
+    "chấm hỏi",
+    "sự cố",
+    "người được điều phối",
+])
+def test_viet_dropped_patterns_do_not_corrupt_clean_text(phrase):
+    assert repair_mojibake(phrase) == phrase
+    assert not has_mojibake(phrase)
+
+
+def test_viet_dropped_phonetic_phrases_in_context():
+    assert repair_mojibake("trả lá»i") == "trả lời"
+    assert repair_mojibake("chấm há»i") == "chấm hỏi"
+    assert repair_mojibake("người lưá»i") == "người lười"

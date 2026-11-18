@@ -90,15 +90,46 @@ _VIET_DROPPED_TEXT.update({
     'ng\u01b0\u00e1\u00bb\ufffdi': 'ng\u01b0\u1eddi',
 })
 
+# Phonetic regex patterns for dropped-byte/mojibake repair
+_VIET_DROPPED_PATTERNS = [
+    (re.compile(r"([Đđ])ư\u1edd([a-z])", re.IGNORECASE), r"\1ườ\2"),
+    (re.compile(r"Trưá»\ufffd?ng"), "Trường"),
+    (re.compile(r"trưá»\ufffd?ng"), "trường"),
+    (re.compile(r"lưá»\ufffd?i"), "lười"),
+    (re.compile(r"Đưá»\ufffd?c"), "Được"),
+    (re.compile(r"đưá»\ufffd?c"), "được"),
+    (re.compile(r"Điá»\ufffd?u"), "Điều"),
+    (re.compile(r"điá»\ufffd?u"), "điều"),
+    (re.compile(r"Tiá»\ufffd?n"), "Tiền"),
+    (re.compile(r"tiá»\ufffd?n"), "tiền"),
+    (re.compile(r"Đá»\ufffd?c"), "Đọc"),
+    (re.compile(r"đá»\ufffd?c"), "đọc"),
+    (re.compile(r"Thá»\ufffd?i"), "Thời"),
+    (re.compile(r"thá»\ufffd?i"), "thời"),
+    (re.compile(r"Lá»\ufffd?ng"), "Lồng"),
+    (re.compile(r"lá»\ufffd?ng"), "lồng"),
+    (re.compile(r"Ngá»\ufffd?ng"), "Ngóng"),
+    (re.compile(r"ngá»\ufffd?ng"), "ngóng"),
+    (re.compile(r"lá»\ufffd?i"), "lời"),
+    (re.compile(r"há»\ufffd?i"), "hỏi"),
+    (re.compile(r"Đá»\ufffd?u"), "Đều"),
+    (re.compile(r"đá»\ufffd?u"), "đều"),
+]
+
 _MAX_PASSES = 4
 
 
 def _apply_viet_dropped_mappings(text: str) -> tuple[str, bool]:
-    """Apply Vietnamese dropped-byte mappings, return (new_text, was_changed)."""
+    """Apply Vietnamese dropped-byte mappings and phonetic regex patterns, return (new_text, was_changed)."""
     changed = False
     for old, new in _VIET_DROPPED_TEXT.items():
         if old in text:
             text = text.replace(old, new)
+            changed = True
+    for pattern, repl in _VIET_DROPPED_PATTERNS:
+        new_text = pattern.sub(repl, text)
+        if new_text != text:
+            text = new_text
             changed = True
     return text, changed
 
