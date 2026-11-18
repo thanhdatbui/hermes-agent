@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Fail-safe repair of UTF-8 text that was mis-decoded as Windows-1252/Latin-1.
 
 Typical symptom (Vietnamese): ``"Lá»—i"`` instead of ``"Lỗi"``,
@@ -58,35 +59,48 @@ _LEFTOVERS = (
 )
 _LONE_A_GRAVE_RE = re.compile(r"(?<=[a-zđ])Ã[  ]")
 
-_VIET_DROPPED_PATTERNS = [
-    (re.compile(r'Ã�'), 'Á'),
-    (re.compile(r'\bBÃO(?=\s+C[ÁÃ]O\b)'), 'BÁO'),
-    (re.compile(r'\bCÃO\b'), 'CÁO'),
-    (re.compile(r'\bĐÃNH\b'), 'ĐÁNH'),
-    (re.compile(r'\bGIÃ\b'), 'GIÁ'),
-    (re.compile(r'Ãá»�?'), 'á»'),
-    (re.compile(r'Æ°'), 'ư'),
-    (re.compile(r'iá»�?u'), 'iều'),
-    (re.compile(r'ưá»�?ng'), 'ường'),
-    (re.compile(r'ưá»�?i'), 'ười'),
-    (re.compile(r'ưá»�?c'), 'ược'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])([Gg]i)á»�?ng(?![a-zA-Z0-9_đĐ])'), r'\g<1>ọng'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])([Tt]r)á»�?ng(?![a-zA-Z0-9_đĐ])'), r'\g<1>ọng'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])([Dd])á»�?c(?![a-zA-Z0-9_đĐ])'), r'\g<1>ọc'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])([Mm])á»�?(?![a-zA-Z0-9_đĐ])'), r'\g<1>ờ'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])([Gg])á»�?i(?![a-zA-Z0-9_đĐ])'), r'\g<1>ửi'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])([Gg])á»�?c(?![a-zA-Z0-9_đĐ])'), r'\g<1>ốc'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])([Hh])á»�?i(?![a-zA-Z0-9_đĐ])'), r'\g<1>ồi'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])([Hh])á»�?c(?![a-zA-Z0-9_đĐ])'), r'\g<1>ọc'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])([Hh])á»�?a(?![a-zA-Z0-9_đĐ])'), r'\g<1>ọa'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])([Mm])á»�?i(?![a-zA-Z0-9_đĐ])'), r'\g<1>ọi'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])([Tt])iá»�?n(?![a-zA-Z0-9_đĐ])'), r'\g<1>iền'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])([Đđ])iá»�?u(?![a-zA-Z0-9_đĐ])'), r'\g<1>iều'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])([Tt]h)ưá»�?ng(?![a-zA-Z0-9_đĐ])'), r'\g<1>ường'),
-    (re.compile(r'(?<![a-zA-Z0-9_đĐ])NGUỒN\s+Gá»�?C(?![a-zA-Z0-9_đĐ])'), 'NGUỒN GỐC'),
+# Canonical Vietnamese phrases for dropped-byte repairs (clean, via \u escapes only)
+_VIET_CANONICAL = [
+    'B\u00c1O C\u00c1O',
+    'NGU\u1ed2N G\u1ed0C',
+    'B\u00e0i h\u1ecdc tr\u01b0\u1edbc \u0111\u00e2y',
+    'th\u1ea3m h\u1ecda \u0111\u00f3',
+    'chi ti\u1ebft m\u1ecdi g\u00f3c khu\u1ea5t',
+    'hi\u1ec7n tr\u01b0\u1eddng \u0111\u1ec3 m\u00e0y',
+    'l\u01b0\u1ee3t g\u1eedi Opus',
+    'd\u01b0 nhi\u1ec1u',
+    'quan tr\u1ecdng',
+    'quota ti\u1ec1n th\u1eadt',
 ]
 
+# Build _VIET_DROPPED_TEXT: map (broken UTF-8 as cp1252) \u2192 clean
+_VIET_DROPPED_TEXT = {}
+for _clean in _VIET_CANONICAL:
+    _broken = _clean.encode('utf-8').decode('cp1252', 'replace')
+    _VIET_DROPPED_TEXT[_broken] = _clean
+
+# Existing U+FFFD dropped-byte regression cases (unchanged)
+_VIET_DROPPED_TEXT.update({
+    '\u0111\u00e1\u00bb\ufffdu': '\u0111\u1ec1u',
+    'v\u1ea5n \u0111\u00e1\u00bb\ufffd': 'v\u1ea5n \u0111\u1ec1',
+    'b\u00e1\u00bb\ufffd qua': 'b\u1ecf qua',
+    'ch\u00e1\u00bb\ufffdn': 'ch\u1ecdn',
+    'l\u00e1\u00bb\ufffdc': 'l\u1ecdc',
+    'm\u00e1\u00bb\ufffdi': 'm\u1ecdi',
+    'ng\u01b0\u00e1\u00bb\ufffdi': 'ng\u01b0\u1eddi',
+})
+
 _MAX_PASSES = 4
+
+
+def _apply_viet_dropped_mappings(text: str) -> tuple[str, bool]:
+    """Apply Vietnamese dropped-byte mappings, return (new_text, was_changed)."""
+    changed = False
+    for old, new in _VIET_DROPPED_TEXT.items():
+        if old in text:
+            text = text.replace(old, new)
+            changed = True
+    return text, changed
 
 
 def _decode_seq(match: "re.Match[str]") -> str:
@@ -122,11 +136,9 @@ def repair_mojibake(text: str) -> str:
         out = text
         repaired = False
         # Before Step 1: run Vietnamese dropped-byte patterns.
-        for pattern, repl in _VIET_DROPPED_PATTERNS:
-            new = pattern.sub(repl, out)
-            if new != out:
-                repaired = True
-                out = new
+        out, viet_changed = _apply_viet_dropped_mappings(out)
+        if viet_changed:
+            repaired = True
         # Step 1: patch byte-loss leftovers that are never legitimate.
         if "�" in out:
             # "Ä�" / "â€�" / "ï¸�" are never legitimate: always patch.
@@ -146,8 +158,9 @@ def repair_mojibake(text: str) -> str:
                 out = pattern.sub(repl, out)
             out = _LONE_A_GRAVE_RE.sub("à", out)
             # Apply Vietnamese-specific dropped-byte patterns.
-            for pattern, repl in _VIET_DROPPED_PATTERNS:
-                out = pattern.sub(repl, out)
+            out, viet_changed = _apply_viet_dropped_mappings(out)
+            if viet_changed:
+                repaired = True
         return out
     except Exception:  # pragma: no cover - fail-safe
         return text

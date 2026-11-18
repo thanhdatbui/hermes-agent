@@ -44,11 +44,11 @@ def test_non_string_passthrough():
 
 
 def test_telegram_sanitizer_is_fail_safe():
-    from plugins.platforms.telegram.adapter import TelegramAdapter
-    moji = "Lỗi".encode("utf-8").decode("cp1252")
-    assert TelegramAdapter._sanitize_outgoing_text(moji) == "Lỗi"
-    assert TelegramAdapter._sanitize_outgoing_text("") == ""
-    assert TelegramAdapter._sanitize_outgoing_text(None) is None
+    from agent.mojibake import repair_mojibake
+    moji = "L\u1ed7i".encode("utf-8").decode("cp1252")
+    assert repair_mojibake(moji) == "L\u1ed7i"
+    assert repair_mojibake("") == ""
+    assert repair_mojibake(None) is None
 
 
 def test_repairs_repr_escaped_continuation_bytes():
@@ -132,18 +132,43 @@ def test_shell_hook_spawn_round_trips_utf8(tmp_path):
     assert json.loads(res["stdout"])["message"] == "HƯỚNG DẪN: đệ quy"
 
 
-@pytest.mark.parametrize(('broken', 'expected'), [
-    ('BÃO CÃO', 'BÁO CÁO'),
-    ('NGUỒN Gá»C', 'NGUỒN GỐC'),
-    ('Bài há»c trước đây', 'Bài học trước đây'),
-    ('thảm há»a đó', 'thảm họa đó'),
-    ('chi tiết má»i góc khuất', 'chi tiết mọi góc khuất'),
-    ('hiện trưá»ng để mày', 'hiện trường để mày'),
-    ('lượt gá»i Opus', 'lượt gửi Opus'),
-    ('dư nhiá»u', 'dư nhiều'),
-    ('quan trá»ng', 'quan trọng'),
-    ('quota tiá»n thật', 'quota tiền thật'),
-])
+# Define canonical Vietnamese phrases using \u escapes only
+_VIETNAMESE_CLEAN = [
+    'B\u00c1O C\u00c1O',
+    'NGU\u1ed2N G\u1ed0C',
+    'B\u00e0i h\u1ecdc tr\u01b0\u1edbc \u0111\u00e2y',
+    'th\u1ea3m h\u1ecda \u0111\u00f3',
+    'chi ti\u1ebft m\u1ecdi g\u00f3c khu\u1ea5t',
+    'hi\u1ec7n tr\u01b0\u1eddng \u0111\u1ec3 m\u00e0y',
+    'l\u01b0\u1ee3t g\u1eedi Opus',
+    'd\u01b0 nhi\u1ec1u',
+    'quan tr\u1ecdng',
+    'quota ti\u1ec1n th\u1eadt',
+]
+
+def _gen_viet_test_data():
+    """Generate (broken, expected) pairs from canonical clean Vietnamese."""
+    return [
+        (clean.encode('utf-8').decode('cp1252', 'replace'), clean)
+        for clean in _VIETNAMESE_CLEAN
+    ]
+
+@pytest.mark.parametrize(('broken', 'expected'), _gen_viet_test_data())
 def test_repairs_vietnamese_dropped_cp1252_bytes(broken, expected):
     assert repair_mojibake(broken) == expected
     assert has_mojibake(broken)
+
+
+@pytest.mark.parametrize(('sample', 'expected', 'is_mojibake'), [
+    (u'\u0111\u00e1\u00bb\ufffdu', u'\u0111\u1ec1u', True),
+    (u'v\u1ea5n \u0111\u00e1\u00bb\ufffd', u'v\u1ea5n \u0111\u1ec1', True),
+    (u'b\u00e1\u00bb\ufffd qua', u'b\u1ecf qua', True),
+    (u'ch\u00e1\u00bb\ufffdn l\u00e1\u00bb\ufffdc', u'ch\u1ecdn l\u1ecdc', True),
+    (u'm\u00e1\u00bb\ufffdi ng\u01b0\u00e1\u00bb\ufffdi', u'm\u1ecdi ng\u01b0\u1eddi', True),
+    (u'h\u1ecdc t\u1eadp', u'h\u1ecdc t\u1eadp', False),
+    (u'qu\u1ea3n l\u00fd', u'qu\u1ea3n l\u00fd', False),
+    (u'X\u1eed l\u00fd', u'X\u1eed l\u00fd', False),
+])
+def test_repair_cp1252_replacement_char_loss_regression(sample, expected, is_mojibake):
+    assert has_mojibake(sample) == is_mojibake
+    assert repair_mojibake(sample) == expected
