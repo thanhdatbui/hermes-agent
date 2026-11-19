@@ -907,8 +907,20 @@ class GatewayStreamConsumer:
         delivered separately via ``_deliver_media_from_response()`` after the
         stream finishes — we just need to hide the raw directives from the
         user.
+
+        Mojibake is repaired here too: deltas are streamed to the chat
+        before ``repair_assistant_message`` sees the finished message, and
+        upstream models (antigravity gemini-3.8-flash on long reasoning)
+        sometimes emit whole replies as cp1252 mojibake.  Repairing the
+        full accumulated text, not single deltas, avoids chunk-boundary
+        splits.
         """
-        return _BasePlatformAdapter.strip_media_directives_for_display(text)
+        text = _BasePlatformAdapter.strip_media_directives_for_display(text)
+        try:
+            from agent.mojibake import repair_mojibake
+            return repair_mojibake(text)
+        except Exception:
+            return text
 
     async def _send_new_chunk(
         self,

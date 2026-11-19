@@ -59,103 +59,142 @@ _LEFTOVERS = (
 )
 _LONE_A_GRAVE_RE = re.compile(r"(?<=[a-zđ])Ã[  ]")
 
-# Canonical Vietnamese phrases for dropped-byte repairs (clean, via \u escapes only)
-_VIET_CANONICAL = [
-    'B\u00c1O C\u00c1O',
-    'NGU\u1ed2N G\u1ed0C',
-    'B\u00e0i h\u1ecdc tr\u01b0\u1edbc \u0111\u00e2y',
-    'th\u1ea3m h\u1ecda \u0111\u00f3',
-    'chi ti\u1ebft m\u1ecdi g\u00f3c khu\u1ea5t',
-    'hi\u1ec7n tr\u01b0\u1eddng \u0111\u1ec3 m\u00e0y',
-    'l\u01b0\u1ee3t g\u1eedi Opus',
-    'd\u01b0 nhi\u1ec1u',
-    'quan tr\u1ecdng',
-    'quota ti\u1ec1n th\u1eadt',
-]
+# ---------------------------------------------------------------------------
+# Step 3: dropped-byte reconstruction (runs only AFTER step 2).
+#
+# cp1252 has no glyph for 0x81 0x8D 0x8F 0x90 0x9D, so a lossy hop deletes
+# that byte (or turns it into U+FFFD / "?").  Once step 2 has decoded every
+# *complete* sequence, any "á»" still in the text is the lead of a Vietnamese
+# letter E1 BB xx whose last byte was lost: one of
+#     0x81 ề   0x8D ọ   0x8F ỏ   0x90 Ố   0x9D ờ
+# The byte is gone for good, so the letter is chosen from the syllable around
+# it (Vietnamese phonotactics + the most frequent words).  This MUST run after
+# step 2: run before it, a rule like "bá»" -> "bỏ" eats the lead of an intact
+# "bá»™" (bộ) and leaves "bỏ™" behind.
+# ---------------------------------------------------------------------------
 
-# Build _VIET_DROPPED_TEXT: map (broken UTF-8 as cp1252) \u2192 clean
-_VIET_DROPPED_TEXT = {}
-for _clean in _VIET_CANONICAL:
-    _broken = _clean.encode('utf-8').decode('cp1252', 'replace')
-    _VIET_DROPPED_TEXT[_broken] = _clean
+_LETTER = r"[^\W\d_]"
+_DROPPED_RE = re.compile(rf"\u00e1\u00bb(\ufffd|\?(?={_LETTER}))?(?!{_C})")
+_SUFFIX_RE = re.compile(rf"{_LETTER}*")
 
-# Existing U+FFFD dropped-byte regression cases (unchanged)
-_VIET_DROPPED_TEXT.update({
-    '\u0111\u00e1\u00bb\ufffdu': '\u0111\u1ec1u',
-    'v\u1ea5n \u0111\u00e1\u00bb\ufffd': 'v\u1ea5n \u0111\u1ec1',
-    'b\u00e1\u00bb\ufffd qua': 'b\u1ecf qua',
-    'ch\u00e1\u00bb\ufffdn': 'ch\u1ecdn',
-    'l\u00e1\u00bb\ufffdc': 'l\u1ecdc',
-    'm\u00e1\u00bb\ufffdi': 'm\u1ecdi',
-    'ng\u01b0\u00e1\u00bb\ufffdi': 'ng\u01b0\u1eddi',
-})
+_O_DOT, _O_HOOK, _O_GRAVE, _E_GRAVE = "\u1ecd", "\u1ecf", "\u1edd", "\u1ec1"
 
-# Phonetic regex patterns for dropped-byte/mojibake repair
-_VIET_DROPPED_PATTERNS = [
-    (re.compile(r"([Đđ])ư\u1edd([a-z])", re.IGNORECASE), r"\1ườ\2"),
-    (re.compile(r"Trưá»\ufffd?ng"), "Trường"),
-    (re.compile(r"trưá»\ufffd?ng"), "trường"),
-    (re.compile(r"lưá»\ufffd?i"), "lười"),
-    (re.compile(r"Đưá»\ufffd?c"), "Được"),
-    (re.compile(r"đưá»\ufffd?c"), "được"),
-    (re.compile(r"Điá»\ufffd?u"), "Điều"),
-    (re.compile(r"điá»\ufffd?u"), "điều"),
-    (re.compile(r"Tiá»\ufffd?n"), "Tiền"),
-    (re.compile(r"tiá»\ufffd?n"), "tiền"),
-    (re.compile(r"Đá»\ufffd?c"), "Đọc"),
-    (re.compile(r"đá»\ufffd?c"), "đọc"),
-    (re.compile(r"Thá»\ufffd?i"), "Thời"),
-    (re.compile(r"thá»\ufffd?i"), "thời"),
-    (re.compile(r"Lá»\ufffd?ng"), "Lồng"),
-    (re.compile(r"lá»\ufffd?ng"), "lồng"),
-    (re.compile(r"Ngá»\ufffd?ng"), "Ngóng"),
-    (re.compile(r"ngá»\ufffd?ng"), "ngóng"),
-    (re.compile(r"lá»\ufffd?i"), "lời"),
-    (re.compile(r"há»\ufffd?i"), "hỏi"),
-    (re.compile(r"Đá»\ufffd?u"), "Đều"),
-    (re.compile(r"đá»\ufffd?u"), "đều"),
-    (re.compile(r"Ä\u00f3n"), "Đón"),
-    (re.compile(r"Ä‘\u00f3n"), "đón"),
-    (re.compile(r"Ä\u00f4n"), "Đôn"),
-    (re.compile(r"Ä‘\u00f4n"), "đôn"),
-    (re.compile(r"Ä\ufffd?Æ¡n"), "Đơn"),
-    (re.compile(r"Ä‘Æ¡n"), "đơn"),
-    (re.compile(r"Giá»\ufffd"), "Giờ"),
-    (re.compile(r"giá»\ufffd"), "giờ"),
-    (re.compile(r"Bá»\ufffd\??"), "Bỏ"),
-    (re.compile(r"bá»\ufffd\??"), "bỏ"),
-    (re.compile(r"B\u00c3\u00b2"), "Bò"),
-    (re.compile(r"b\u00c3\u00b2"), "bò"),
-    (re.compile(r"Ä\u01b0\u00e1»\ufffdng"), "Đường"),
-    (re.compile(r"Ä‘\u01b0\u00e1»\ufffdng"), "đường"),
-    (re.compile(r"Vá»\ufffd\??"), "Về"),
-    (re.compile(r"vá»\ufffd\??"), "về"),
-    (re.compile(r"Há»\ufffd\??"), "Hỗ"),
-    (re.compile(r"há»\ufffd\??"), "hỗ"),
-    (re.compile(r"Lá»\ufffd?\??t"), "Lót"),
-    (re.compile(r"l\u00e1»\ufffd?\??t"), "lót"),
-    (re.compile(r"á»\ufffd?\??c l\u00e1»\ufffd?\??ng"), "ốc lỏng"),
-    (re.compile(r"Á»\ufffd?\??c l\u00e1»\ufffd?\??ng"), "Ốc lỏng"),
-    (re.compile(r"Sá»\ufffd?\?? c\u00e1»\ufffd?\??"), "Sự cố"),
-    (re.compile(r"sá»\ufffd?\?? c\u00e1»\ufffd?\??"), "sự cố"),
-]
+# rime -> (onset -> letter, default letter)
+_DROPPED_BY_RIME: dict[str, tuple[dict[str, str], str]] = {
+    "": ({"b": _O_HOOK, "nh": _O_HOOK, "x": _O_HOOK, "tr": _O_HOOK, "n": _E_GRAVE,
+          "v": _E_GRAVE, "\u0111": _E_GRAVE, "k": _E_GRAVE, "ngh": _E_GRAVE,
+          "h": _O_DOT, "l": _O_DOT}, _O_GRAVE),
+    "i": ({"h": _O_HOOK, "kh": _O_HOOK, "gi": _O_HOOK, "s": _O_HOOK, "t": _O_HOOK,
+           "m": _O_DOT, "g": _O_DOT, "ch": _O_DOT}, _O_GRAVE),
+    "n": ({"v": _O_GRAVE, "h": _O_GRAVE, "s": _O_GRAVE,
+           "n": _E_GRAVE, "\u0111": _E_GRAVE, "m": _E_GRAVE, "r": _E_GRAVE}, _O_DOT),
+    "ng": ({"h": _O_HOOK, "l": _O_HOOK, "b": _O_HOOK, "x": _O_HOOK, "ph": _O_HOOK}, _O_DOT),
+    "a": ({"th": _O_HOOK, "kh": _O_HOOK}, _O_DOT),
+    "e": ({}, _O_HOOK),
+    "nh": ({}, _E_GRAVE),
+    "m": ({"kh": _O_DOT}, _E_GRAVE),
+    "u": ({}, _E_GRAVE),
+}
+_STOP_FINALS = ("c", "t", "p")  # only sắc/nặng tones allowed -> "ọ"
+
+
+def _pick_dropped_letter(prefix: str, suffix: str) -> str:
+    p, s = prefix.lower(), suffix.lower()
+    letters = prefix + suffix
+    # In UPPERCASE text every other E1 BB xx capital survives cp1252; only
+    # "Ố" (E1 BB 90) can be the lost one.
+    if letters and letters.isupper() and (suffix or len(prefix) >= 2):
+        return "\u1ed0"
+    if p.endswith("\u01b0"):  # ư: "ườ" (người, trường) / "ượ" (được)
+        return "\u1ee3" if s.startswith(_STOP_FINALS) else _O_GRAVE
+    if p.endswith(("i", "y")) and p != "gi":  # "iề"/"yề" (điều, quyền)
+        return _E_GRAVE
+    if s.startswith(_STOP_FINALS):
+        return _O_DOT
+    rime = s if s in _DROPPED_BY_RIME else s[:1] if s[:1] in _DROPPED_BY_RIME else None
+    if rime is None:
+        return _O_DOT
+    by_onset, default = _DROPPED_BY_RIME[rime]
+    return by_onset.get(p, default)
+
+
+def _repair_dropped_viet(text: str) -> str:
+    def sub(m: "re.Match[str]") -> str:
+        start = m.start()
+        i = start
+        while i > 0 and text[i - 1].isalpha():
+            i -= 1
+        prefix = text[i:start]
+        suffix = _SUFFIX_RE.match(text, m.end()).group(0)
+        if not m.group(1):
+            # No loss marker: "á»" may be a real "á" + closing guillemet.
+            if not prefix and not suffix:
+                return m.group(0)
+            if not suffix and text.rfind("\u00ab", 0, start) > text.rfind("\u00bb", 0, start):
+                return m.group(0)
+        return _pick_dropped_letter(prefix, suffix)
+
+    if "\u00e1\u00bb" in text:
+        text = _DROPPED_RE.sub(sub, text)
+    if "\u00c4" in text:  # Đ = C4 90, 0x90 lost
+        text = _DROPPED_D_RE.sub("\u0110", text)
+    if "\u00c3\ufffd" in text:  # Á = C3 81 (Í/Ý share the lost-byte shape)
+        text = text.replace("\u00c3\ufffd", "\u00c1")
+    if "â�" in text:  # dingbats E2 9D xx (❌ ❗ ❤) lost their 0x9D
+        text = _DROPPED_DINGBAT_RE.sub(_decode_dingbat, text)
+    if "�" in text:  # "mờ�i": an older repair's leftover of "mọi"
+        text = _OLD_MOI_RE.sub(lambda m: m.group(1) + "ọi", text)
+    return text
+
+
+_DROPPED_DINGBAT_RE = re.compile(rf"â�({_C})")
+_OLD_MOI_RE = re.compile(r"(?<![^\W\d_])([mM])ờ�i")
+
+
+def _decode_dingbat(m: "re.Match[str]") -> str:
+    try:
+        return bytes([0xE2, 0x9D, _BYTE_FOR_CHAR[m.group(1)]]).decode("utf-8")
+    except (KeyError, UnicodeDecodeError):
+        return m.group(0)
+
+
+_VIET_VOWELS = (
+    "aàáảãạăằắẳẵặâầấẩẫậeèéẻẽẹêềếểễệiìíỉĩịoòóỏõọôồốổỗộơờớởỡợuùúủũụưừứửữựyỳýỷỹỵ"
+)
+_DROPPED_D_RE = re.compile(
+    rf"\u00c4\ufffd?(?=[{_VIET_VOWELS}{_VIET_VOWELS.upper()}])"
+)
+
+# Damage left by the pre-2026-11-18 repair, which ran "bá»"->"bỏ",
+# "vá»"->"về", "giá»"->"giờ" BEFORE decoding and so split intact sequences:
+# "bá»™" (bộ) became "bỏ™", "vá»¡" (vỡ) "về¡", "giá»¯a" (giữa) "giờ¯a".
+# Undo it by re-reading the orphaned continuation char as the third byte.
+# Punctuation-looking continuation chars (smart quotes, dashes, NBSP, «»...)
+# are excluded so legitimate text like `“giờ”` is never touched.
+_PUNCT_CONT = set("\u2026\u2018\u2019\u201c\u201d\u2022\u2013\u2014\u00a0\u00a9\u00ae\u00b0\u00b1\u00b7\u00bb")
+_SPLIT_CONT = "".join(
+    re.escape(ch) for ch, b in _BYTE_FOR_CHAR.items()
+    if 0x80 <= b <= 0xBF and ch not in _PUNCT_CONT and ch != "\u00ab"
+)
+_OLD_SPLIT_RE = re.compile(
+    rf"(?<!{_LETTER})([bB]\u1ecf|[vV]\u1ec1|[gG]i\u1edd)"
+    rf"(?:([{_SPLIT_CONT}])|\u00ab(?={_LETTER}))"
+)
+
+
+def _undo_old_split(text: str) -> str:
+    def sub(m: "re.Match[str]") -> str:
+        ch = m.group(2) or "\u00ab"
+        try:
+            letter = bytes([0xE1, 0xBB, _BYTE_FOR_CHAR[ch]]).decode("utf-8")
+        except (KeyError, UnicodeDecodeError):
+            return m.group(0)
+        return m.group(1)[:-1] + letter
+
+    return _OLD_SPLIT_RE.sub(sub, text)
+
 
 _MAX_PASSES = 4
-
-
-def _apply_viet_dropped_mappings(text: str) -> tuple[str, bool]:
-    """Apply Vietnamese dropped-byte mappings and phonetic regex patterns, return (new_text, was_changed)."""
-    changed = False
-    for old, new in _VIET_DROPPED_TEXT.items():
-        if old in text:
-            text = text.replace(old, new)
-            changed = True
-    for pattern, repl in _VIET_DROPPED_PATTERNS:
-        new_text = pattern.sub(repl, text)
-        if new_text != text:
-            text = new_text
-            changed = True
-    return text, changed
 
 
 def _decode_seq(match: "re.Match[str]") -> str:
@@ -190,15 +229,16 @@ def repair_mojibake(text: str) -> str:
     try:
         out = text
         repaired = False
-        # Before Step 1: run Vietnamese dropped-byte patterns.
-        out, viet_changed = _apply_viet_dropped_mappings(out)
-        if viet_changed:
-            repaired = True
         # Step 1: patch byte-loss leftovers that are never legitimate.
         if "�" in out:
             # "Ä�" / "â€�" / "ï¸�" are never legitimate: always patch.
             for pattern, repl in _LEFTOVERS:
                 out = re.sub(pattern.pattern.replace("�?", "�"), repl, out)
+        # Undo splits left by the old pre-decode repair ("bỏ™" -> "bộ").
+        new = _undo_old_split(out)
+        if new != out:
+            repaired = True
+            out = new
         # Step 2: decode mojibake sequences, repeating to undo nesting.
         for _ in range(_MAX_PASSES):
             new = _SEQ_RE.sub(_decode_seq, out)
@@ -206,16 +246,16 @@ def repair_mojibake(text: str) -> str:
                 break
             repaired = True
             out = new
-        # Step 3: only in text proven to be mojibake, patch lossy leftovers.
+        # Step 3: rebuild letters whose last byte was lost (needs step 2
+        # done first, so only genuinely incomplete sequences are left).
+        new = _repair_dropped_viet(out)
+        if new != out:
+            repaired = True
+            out = new
         if repaired:
-            # Only in text proven to be mojibake: patch lossy leftovers.
             for pattern, repl in _LEFTOVERS:
                 out = pattern.sub(repl, out)
             out = _LONE_A_GRAVE_RE.sub("à", out)
-            # Apply Vietnamese-specific dropped-byte patterns.
-            out, viet_changed = _apply_viet_dropped_mappings(out)
-            if viet_changed:
-                repaired = True
         return out
     except Exception:  # pragma: no cover - fail-safe
         return text

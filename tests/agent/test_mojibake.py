@@ -146,36 +146,32 @@ _VIETNAMESE_CLEAN = [
     'quota ti\u1ec1n th\u1eadt',
 ]
 
-def _gen_viet_test_data():
-    """Generate (broken, expected) pairs from canonical clean Vietnamese."""
-
-
 def test_new_viet_dropped_patterns():
     samples = [
-        ("Ä\u00f3n", "Đón"),
-        ("Ä‘\u00f3n", "đón"),
-        ("Ä\u00f4n", "Đôn"),
-        ("Ä‘\u00f4n", "đôn"),
-        ("Ä\ufffdÆ¡n", "Đơn"),
+        ("Äón", "Đón"),
+        ("Ä‘ón", "đón"),
+        ("Äôn", "Đôn"),
+        ("Ä‘ôn", "đôn"),
+        ("Ä�Æ¡n", "Đơn"),
         ("Ä‘Æ¡n", "đơn"),
-        ("Giá»\ufffd", "Giờ"),
-        ("giá»\ufffd", "giờ"),
-        ("B\u00e1»\ufffd?", "Bỏ"),
-        ("b\u00e1»\ufffd?", "bỏ"),
-        ("B\u00c3\u00b2", "Bò"),
-        ("b\u00c3\u00b2", "bò"),
-        ("Ä\u01b0\u00e1\u00bb\ufffdng", "Đường"),
-        ("Ä‘\u01b0\u00e1\u00bb\ufffdng", "đường"),
-        ("V\u00e1\u00bb\ufffd?", "Về"),
-        ("v\u00e1\u00bb\ufffd?", "về"),
-        ("H\u00e1\u00bb\ufffd?", "Hỗ"),
-        ("h\u00e1\u00bb\ufffd?", "hỗ"),
-        ("L\u00e1\u00bb\ufffd?t", "Lót"),
-        ("l\u00e1\u00bb\ufffd?t", "lót"),
-        ("á»\ufffd?c l\u00e1\u00bb\ufffd?ng", "ốc lỏng"),
-        ("Á»\ufffd?c l\u00e1\u00bb\ufffd?ng", "Ốc lỏng"),
-        ("S\u00e1\u00bb\ufffd? c\u00e1\u00bb\ufffd?", "Sự cố"),
-        ("s\u00e1\u00bb\ufffd? c\u00e1\u00bb\ufffd?", "sự cố"),
+        ("Giá»�", "Giờ"),
+        ("giá»�", "giờ"),
+        ("Bá»�", "Bỏ"),
+        ("bá»� qua", "bỏ qua"),
+        ("BÃ²", "Bò"),
+        ("bÃ²", "bò"),
+        ("Äưá»�ng", "Đường"),
+        ("Ä‘ưá»�ng", "đường"),
+        ("Vá»�", "Về"),
+        ("vá»� nhà", "về nhà"),
+        # A "?" standing for the lost byte mid-word (lossy encode).
+        ("vá»?n", "vờn"),
+        ("Há»�", "Họ"),
+        ("há»�", "họ"),
+        ("Lá»�t", "Lọt"),
+        ("lá»�t", "lọt"),
+        ("lá»�ng lẻo", "lỏng lẻo"),
+        ("Cá»�T LÕI", "CỐT LÕI"),
     ]
     for broken, expected in samples:
         assert repair_mojibake(broken) == expected
@@ -222,10 +218,10 @@ _VIET_DROPPED_WORD_CASES = [
     ("đá»\ufffdc", "đọc"), ("đá»c", "đọc"),
     ("Thá»\ufffdi", "Thời"), ("Thá»i", "Thời"),
     ("thá»\ufffdi", "thời"), ("thá»i", "thời"),
-    ("Lá»\ufffdng", "Lồng"), ("Lá»ng", "Lồng"),
-    ("lá»\ufffdng", "lồng"), ("lá»ng", "lồng"),
-    ("Ngá»\ufffdng", "Ngóng"), ("Ngá»ng", "Ngóng"),
-    ("ngá»\ufffdng", "ngóng"), ("ngá»ng", "ngóng"),
+    ("Lá»\ufffdng", "Lỏng"), ("Lá»ng", "Lỏng"),
+    ("lá»\ufffdng", "lỏng"), ("lá»ng", "lỏng"),
+    ("Ngá»\ufffdng", "Ngọng"), ("Ngá»ng", "Ngọng"),
+    ("ngá»\ufffdng", "ngọng"), ("ngá»ng", "ngọng"),
     ("lá»\ufffdi", "lời"), ("lá»i", "lời"),
     ("há»\ufffdi", "hỏi"), ("há»i", "hỏi"),
     ("Đá»\ufffdu", "Đều"), ("Đá»u", "Đều"),
@@ -243,6 +239,8 @@ def test_repairs_viet_dropped_phonetic_patterns(broken, expected):
     "chấm hỏi",
     "sự cố",
     "người được điều phối",
+    "Toàn bộ lịch sử",
+    "không thể bị ô nhiễm",
 ])
 def test_viet_dropped_patterns_do_not_corrupt_clean_text(phrase):
     assert repair_mojibake(phrase) == phrase
@@ -253,3 +251,78 @@ def test_viet_dropped_phonetic_phrases_in_context():
     assert repair_mojibake("trả lá»i") == "trả lời"
     assert repair_mojibake("chấm há»i") == "chấm hỏi"
     assert repair_mojibake("người lưá»i") == "người lười"
+
+
+# === Regression: intact cp1252 sequences must decode whole (2026-11-18) ===
+# The old repair ran "bá»"->"bỏ" BEFORE decoding and tore "bá»™" (bộ) into
+# "bỏ™".  Step 2 must decode complete sequences first.
+
+@pytest.mark.parametrize(("broken", "expected"), [
+    ("To\u00e0n b\u00e1\u00bb\u2122 l\u1ecbch s\u1eed", "Toàn bộ lịch sử"),
+    ("kh\u00f4ng th\u1ec3 b\u00e1\u00bb\u2039 \u00f4 nhi\u1ec5m", "không thể bị ô nhiễm"),
+    ("\u0111\u1ec1u b\u00e1\u00bb\u2039 \u00e9p bu\u1ed9c", "đều bị ép buộc"),
+    ("b\u1ea5t k\u1ef3 t\u1ef1 n\u00e0o v\u00e1\u00bb\u00a1", "bất kỳ tự nào vỡ"),
+    ("gi\u00e1\u00bb\u00af ch\u1ed1t ch\u1eb7n", "giữ chốt chặn"),
+])
+def test_intact_cp1252_sequences_are_not_torn(broken, expected):
+    assert repair_mojibake(broken) == expected
+
+
+@pytest.mark.parametrize(("damaged", "expected"), [
+    ("toàn bỏ™ lịch sử", "toàn bộ lịch sử"),
+    ("không thể bỏ‹ ô nhiễm", "không thể bị ô nhiễm"),
+    ("nào về¡ hết", "nào vỡ hết"),
+    ("giờ¯a đường", "giữa đường"),
+    ("về«a xong", "vừa xong"),
+])
+def test_undoes_damage_from_old_pre_decode_repair(damaged, expected):
+    assert repair_mojibake(damaged) == expected
+
+
+@pytest.mark.parametrize("clean", [
+    "“giờ” và “bỏ”", "đi về… rồi", "bỏ – về — giờ", "«cà phê đá»",
+    "Äpfel und Ärger",
+])
+def test_repair_layers_leave_clean_text_alone(clean):
+    assert repair_mojibake(clean) == clean
+
+
+@pytest.mark.parametrize(("broken", "expected"), [
+    ("gá»i điện", "gọi điện"),
+    ("phá há»\ufffdng", "phá hỏng"),
+    ("Tiêu đá»\ufffd:", "Tiêu đề:"),
+    ("LUÔN Sá»\ufffdNG", "LUÔN SỐNG"),
+    ("CHá»\ufffdNG TUNNEL", "CHỐNG TUNNEL"),
+    ("chữa ngá»\ufffdn", "chữa ngọn"),
+    ("thảm há»\ufffda", "thảm họa"),
+    ("nghi ngá»\ufffd", "nghi ngờ"),
+    ("cái nhá»\ufffd", "cái nhỏ"),
+    ("nhiá»\ufffdu Ä\ufffdiá»\ufffdu", "nhiều Điều"),
+])
+def test_rebuilds_letters_with_lost_third_byte(broken, expected):
+    assert repair_mojibake(broken) == expected
+
+
+def test_full_gemini_mojibake_reply_is_recovered():
+    # Shape seen live from antigravity gemini-3.8-flash on 2026-11-18.
+    clean = ("Vào giờ sinh hoạt, toàn bộ người học đều chọn bỏ chiếc điện thoại "
+             "bị vỡ hỏng qua một bên, vừa đọc tiêu đề tài liệu về lối sống, "
+             "vừa giữ lời hứa chống bạo lực và tiếp thu nhiều điều hay.")
+    broken = clean.encode("utf-8").decode("cp1252", "replace")
+    assert repair_mojibake(broken) == clean
+
+
+def test_stream_consumer_display_repairs_mojibake():
+    from gateway.stream_consumer import GatewayStreamConsumer
+
+    broken = "phá há»\ufffdng, toàn bá»™".replace("\u00e1\u00bb\u2122", "\u00e1\u00bb\u2122")
+    assert GatewayStreamConsumer._clean_for_display(broken) == "phá hỏng, toàn bộ"
+
+
+@pytest.mark.parametrize(("broken", "expected"), [
+    ("#### â�Œ Lỗi", "#### ❌ Lỗi"),
+    ("chặn mờ�i lệnh", "chặn mọi lệnh"),
+    ("Mờ�i tác vụ", "Mọi tác vụ"),
+])
+def test_repairs_leftovers_of_old_repairs(broken, expected):
+    assert repair_mojibake(broken) == expected
