@@ -380,7 +380,7 @@ def _preflight_ensure_accounts(row: int, window_key: str, cluster: dict[str, Any
             check=False,
             timeout=5400,
             env=child_env,
-            creationflags=0x08000000 if sys.platform == 'win32' else 0,
+            creationflags=0x08000000,
         )
         if res and res.returncode == 0:
             marker_payload["status"] = "success"
@@ -667,12 +667,7 @@ def _spawn_feed_session(
         "close_fds": True,
         "env": child_env,
     }
-    if sys.platform == "win32":
-        kwargs["creationflags"] = 0x08000200  # CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
-    else:
-        kwargs["start_new_session"] = True
-
-    proc = subprocess.Popen(argv, **kwargs)
+    proc = subprocess.Popen(argv, creationflags=0x08000200, **kwargs)  # CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
     sys.stdout.write(
         f"tiktok_runner: spawned Row{row} pid={proc.pid} [host={host_config} socket={adb_server_socket}]\n"
     )

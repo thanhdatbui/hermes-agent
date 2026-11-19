@@ -324,7 +324,7 @@ def main() -> int:
                 import subprocess
                 bridge_script = r"D:\Taadaa\tools\opencode_bridge.py"
                 if os.path.exists(bridge_script):
-                    subprocess.Popen([sys.executable, bridge_script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    subprocess.Popen([sys.executable, bridge_script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
             except Exception:
                 pass
 

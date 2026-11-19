@@ -22,7 +22,7 @@ proc = subprocess.run(
     capture_output=True,
     text=True,
     timeout=180,
-    cwd=r"D:\Taadaa\tiktok-luot nuoi acc",
+    cwd=r"D:\Taadaa\tiktok-luot nuoi acc", creationflags=subprocess.CREATE_NO_WINDOW,
 )
 out = (proc.stdout or "").strip()
 err = (proc.stderr or "").strip()

@@ -7,7 +7,7 @@ args = sys.argv[1:] if len(sys.argv) > 1 else ["--live"]
 kibe_env = os.environ.copy()
 kibe_env["ENABLE_CODEX_OAUTH"] = "0"
 kibe_cmd = [sys.executable, r"D:\Taadaa\GPM auto\scripts\batch_gpm_5profiles_supervisor.py"] + args
-res_kibe = subprocess.run(kibe_cmd, env=kibe_env, creationflags=0x08000000 if sys.platform == 'win32' else 0)
+res_kibe = subprocess.run(kibe_cmd, env=kibe_env, creationflags=subprocess.CREATE_NO_WINDOW)
 
 # 2. Farm Admin (M201-280) - Lấy Hotmail Admin log lên GPM ở Kibe
 admin_env = os.environ.copy()
@@ -17,6 +17,6 @@ admin_env["GPM_SUPERVISOR_ACCOUNT_XLSX"] = r"D:\OneDrive\TaadaaData\admin\taikho
 admin_env["GPM_SUPERVISOR_PROXY_XLSX"] = r"D:\OneDrive\TaadaaData\admin\PROXYgandienthoai.xlsx"
 admin_env["GPM_SUPERVISOR_STATE_PATH"] = r"D:\Taadaa\runtime\admin\cron-state\batch_gpm_5profiles_supervisor_state.json"
 admin_cmd = [sys.executable, r"D:\Taadaa\GPM auto\scripts\batch_gpm_5profiles_supervisor.py"] + args
-res_admin = subprocess.run(admin_cmd, env=admin_env, creationflags=0x08000000 if sys.platform == 'win32' else 0)
+res_admin = subprocess.run(admin_cmd, env=admin_env, creationflags=subprocess.CREATE_NO_WINDOW)
 
 sys.exit(res_kibe.returncode if res_kibe.returncode != 0 else res_admin.returncode)

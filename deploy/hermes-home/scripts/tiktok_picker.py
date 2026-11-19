@@ -316,7 +316,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     child_argv = build_business_argv(env, day, seed, as_of, reference_time)
     child_env = build_child_env(env)
-    subprocess.run(child_argv, cwd=str(repo_root()), env=child_env, check=True)
+    subprocess.run(child_argv, cwd=str(repo_root()), env=child_env, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
     return 0
 
 

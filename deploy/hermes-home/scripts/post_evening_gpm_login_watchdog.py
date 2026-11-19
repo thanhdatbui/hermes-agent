@@ -177,7 +177,7 @@ def sync_gpm_profiles_lifecycle():
         gpm_exe = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\GPMLogin.exe")
         if gpm_exe.exists():
             try:
-                subprocess.Popen([str(gpm_exe)])
+                subprocess.Popen([str(gpm_exe)], creationflags=subprocess.CREATE_NO_WINDOW)
                 time.sleep(5)
             except Exception as e:
                 log(f"Không thể khởi động GPMLogin: {e}")
@@ -575,7 +575,7 @@ def get_online_adb_serials() -> set[str]:
     """Lấy danh sách các serial thiết bị ADB đang online."""
     online = set()
     try:
-        res = subprocess.run([ADB_PATH, "devices"], capture_output=True, text=True, timeout=5)
+        res = subprocess.run([ADB_PATH, "devices"], capture_output=True, text=True, timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)
         for line in res.stdout.splitlines():
             parts = line.strip().split()
             if len(parts) >= 2 and parts[1] == "device":
@@ -665,7 +665,7 @@ def run_login(c: dict) -> dict:
     try:
         proc = subprocess.run(
             [PYTHON_EXE, str(GPM_SCRIPT), email, "--login-only"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600, creationflags=subprocess.CREATE_NO_WINDOW,
         )
         combined = (proc.stdout or "") + "\n" + (proc.stderr or "")
         success = (
@@ -703,7 +703,7 @@ def run_login(c: dict) -> dict:
                     subprocess.Popen(
                         [PYTHON_EXE, str(nurture_script), "--email", email],
                         stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL
+                        stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW
                     )
                 except Exception as e_nur:
                     log(f"[M{mid:02d}] Lỗi kích hoạt nurture cho {email}: {e_nur}")

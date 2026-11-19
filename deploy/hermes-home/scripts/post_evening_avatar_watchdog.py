@@ -296,7 +296,7 @@ def rescan_completed_machines(machines: list[int] | None = None, timeout_seconds
             cmd,
             capture_output=True,
             text=True,
-            timeout=timeout_seconds,
+            timeout=timeout_seconds, creationflags=subprocess.CREATE_NO_WINDOW,
         )
         elapsed = time.time() - start_time
         stdout_clean = (res.stdout or "").strip()
@@ -1049,9 +1049,7 @@ def trigger_avatar_batch(tik: int, machines: list[int], state: dict, host_contex
             # Never let a remote Admin setting leak into a local Kibe batch.
             kwargs["env"] = dict(os.environ)
             kwargs["env"].pop("ADB_SERVER_SOCKET", None)
-        if sys.platform == "win32":
-            kwargs["creationflags"] = 0x08000200  # CREATE_NO_WINDOW
-        proc = subprocess.Popen(cmd, **kwargs)
+        proc = subprocess.Popen(cmd, creationflags=0x08000200, **kwargs)  # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
 
         # Lưu state đang chạy, KHÔNG gửi tin nhắn bắt đầu
         batch_info = {

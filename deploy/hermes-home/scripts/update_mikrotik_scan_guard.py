@@ -59,7 +59,7 @@ def update_r3g_tinyproxy(mikrotik_ip, pc_ip):
             timeout=15,
             check=True,
             capture_output=True,
-            creationflags=0x08000000 if sys.platform == 'win32' else 0,
+            creationflags=0x08000000,
         )
     except Exception as e:
         print(f"[WARN] R3G tinyproxy sync failed: {e}", file=sys.stderr)

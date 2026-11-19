@@ -21,5 +21,5 @@ if not os.path.isfile(SCRIPT):
     sys.stderr.write(f"[SHIM ERROR] Script not found: {SCRIPT}\n")
     sys.exit(1)
 
-proc = subprocess.run([PY, "-B", SCRIPT] + sys.argv[1:], cwd=WORKDIR)
+proc = subprocess.run([PY, "-B", SCRIPT] + sys.argv[1:], cwd=WORKDIR, creationflags=subprocess.CREATE_NO_WINDOW)
 sys.exit(proc.returncode)

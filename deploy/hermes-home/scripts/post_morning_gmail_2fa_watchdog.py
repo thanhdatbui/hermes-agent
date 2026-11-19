@@ -215,7 +215,7 @@ def is_feed_runner_active() -> bool:
                     continue
         else:
             res = subprocess.run(["pgrep", "-f", "feed_session_runner|run_feed_session|feed_consumer"],
-                                 capture_output=True, text=True, timeout=5)
+                                 capture_output=True, text=True, timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)
             if res.returncode == 0:
                 return True
         return False

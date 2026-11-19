@@ -113,7 +113,7 @@ def main():
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=120
+            timeout=120, creationflags=subprocess.CREATE_NO_WINDOW
         )
     except Exception as e:
         print(f"❌ Lỗi chạy audit_stale_upload_accounts: {e}")

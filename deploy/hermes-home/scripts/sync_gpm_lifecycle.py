@@ -97,7 +97,7 @@ def get_online_adb_devices() -> set[str]:
     """Lấy danh sách các serial thiết bị ADB đang ở trạng thái online / device."""
     online_devs = set()
     try:
-        res = subprocess.run([ADB_PATH, "devices"], capture_output=True, text=True, timeout=5)
+        res = subprocess.run([ADB_PATH, "devices"], capture_output=True, text=True, timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)
         for l in res.stdout.splitlines():
             if "\tdevice" in l:
                 online_devs.add(l.split()[0].strip())
@@ -441,7 +441,7 @@ def cleanup_s7_die_accounts(dry_run: bool = False, force: bool = False):
             with acquire_device_lock(machine=str(mid), serial=serial, project="gpm-cleanup", bypass_proxy_readiness=True):
                 # Kiểm tra dumpsys account xem email DIE có thực sự còn trên máy không
                 try:
-                    chk = subprocess.run([ADB_PATH, "-s", serial, "shell", "dumpsys", "account"], capture_output=True, text=True, timeout=5)
+                    chk = subprocess.run([ADB_PATH, "-s", serial, "shell", "dumpsys", "account"], capture_output=True, text=True, timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)
                     dev_accs = [a.lower() for a in re.findall(r"Account \{name=([^,]+), type=com\.google\}", chk.stdout)]
                 except Exception:
                     dev_accs = []
@@ -471,7 +471,7 @@ def cleanup_s7_die_accounts(dry_run: bool = False, force: bool = False):
                         logger.error(f"Lỗi khi gỡ account {target_email}: {ex_del}")
                 
                 # Đưa về HOME an toàn
-                subprocess.run([ADB_PATH, "-s", serial, "shell", "input", "keyevent", "3"], capture_output=True, timeout=5)
+                subprocess.run([ADB_PATH, "-s", serial, "shell", "input", "keyevent", "3"], capture_output=True, timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)
         except DeviceLockUnavailable:
             # Máy đang bận, bỏ qua sang máy khác
             continue

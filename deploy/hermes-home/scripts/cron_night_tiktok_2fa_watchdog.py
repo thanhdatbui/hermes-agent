@@ -344,7 +344,7 @@ def hydrate_workbook(path: Path) -> bool:
                 time.sleep(2.0)
                 continue
             if sys.platform == 'win32':
-                result = subprocess.run(['attrib', '-u', '+p', str(path)], capture_output=True, timeout=10)
+                result = subprocess.run(['attrib', '-u', '+p', str(path)], capture_output=True, timeout=10, creationflags=subprocess.CREATE_NO_WINDOW)
                 if result.returncode != 0:
                     logger.warning('Attrib hydrate thất bại (code=%d): %s (nhịp %d/3)', result.returncode, path, attempt)
                     time.sleep(2.0)
@@ -372,12 +372,13 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
     kibe_code = EXIT_SUCCESS
     admin_code = EXIT_SUCCESS
 
-    # Hydrate và pin Kibe workbook nếu đang bị OneDrive Files On-Demand giữ offline
-    if not WORKBOOK_PATH.exists() or not hydrate_workbook(WORKBOOK_PATH):
+    has_sqlite_ssot = Path("D:/Taadaa/data/farm_master.db").is_file()
+    if not has_sqlite_ssot and (not WORKBOOK_PATH.exists() or not hydrate_workbook(WORKBOOK_PATH)):
         logger.error('Workbook %s không tồn tại hoặc không thể hydrate, dừng Cluster Kibe', WORKBOOK_PATH)
         kibe_code = 5
         outputs.append('=== CLUSTER KIBE (MÁY 1-80) ===\nBLOCKED: WORKBOOK_HYDRATION_FAILED')
-    else:
+
+    if kibe_code != 5:
         # 1. Cluster Kibe (Máy 1 - 80)
         cmd_kibe = [
             PYTHON_EXE,
@@ -388,6 +389,8 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
             "--live",
             "--max-workers", "15",
         ]
+        if has_sqlite_ssot:
+            cmd_kibe.append("--require-sqlite")
         env_kibe = dict(os.environ)
         env_kibe["PYTHONPATH"] = f"{TIKTOK_2FA_REPO_DIR / 'python_runner'}{os.pathsep}{AUTOMATION_CORE_SRC}"
         env_kibe["TAADAA_HOST_CONFIG"] = str(HOST_CONFIG)
@@ -401,7 +404,7 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=5400,
+                timeout=5400, creationflags=subprocess.CREATE_NO_WINDOW,
             )
             outputs.append(f"=== CLUSTER KIBE (MÁY 1-80) ===\n{proc_kibe.stdout}\n{proc_kibe.stderr}")
             kibe_code = proc_kibe.returncode
@@ -418,15 +421,8 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
         "$env:PYTHONUTF8 = '1'\n"
         f"Set-Location '{_ps_quote(ADMIN_REPO_DIR)}'\n"
         f"$wb = '{_ps_quote(ADMIN_WORKBOOK)}'\n"
-        "$owner = Join-Path (Split-Path $wb) ('~$' + (Split-Path $wb -Leaf))\n"
-        "if (Test-Path $owner) {\n"
-        "    $xl = Get-Process excel -ErrorAction SilentlyContinue\n"
-        "    if (-not $xl) { Remove-Item -Force $owner -ErrorAction SilentlyContinue }\n"
-        "}\n"
-        "attrib -u +p $wb\n"
-        "try { [System.IO.File]::ReadAllBytes($wb) | Out-Null } catch {}\n"
         f"& '{_ps_quote(ADMIN_PYTHON)}' python_runner/run_batch_live_2fa.py "
-        f"--workbook-path $wb --workbook-sheet 'Tài Khoản' --adb-path '{_ps_quote(ADMIN_ADB_PATH)}' --max-workers 15 --live\n"
+        f"--workbook-path $wb --workbook-sheet 'Tài Khoản' --adb-path '{_ps_quote(ADMIN_ADB_PATH)}' --max-workers 15 --live --require-sqlite\n"
         "exit $LASTEXITCODE\n"
     )
     b64_ps =base64.b64encode(ps_admin_script.encode("utf-16le")).decode("ascii")
@@ -442,7 +438,7 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=5400,
+            timeout=5400, creationflags=subprocess.CREATE_NO_WINDOW,
         )
         outputs.append(f"=== CLUSTER ADMIN (MÁY 201-280) ===\n{proc_admin.stdout}\n{proc_admin.stderr}")
         admin_code = proc_admin.returncode
@@ -485,7 +481,7 @@ def read_admin_gmail_summary_remote(min_mtime: float) -> dict | None:
     try:
         res = subprocess.run(
             ["python", "D:/Taadaa/tools/admin_ssh.py", "--powershell", "--timeout", "30", ps_cmd],
-            capture_output=True, text=True, encoding="utf-8", errors="replace"
+            capture_output=True, text=True, encoding="utf-8", errors="replace", creationflags=subprocess.CREATE_NO_WINDOW
         )
         if res.returncode == 0 and res.stdout.strip():
             # parse json from stdout (skip warning lines)
@@ -758,7 +754,7 @@ def build_2fa_report(
         lines.append(f"• Lỗi chi tiết: {(breakdown or {}).get('total', sum(reasons.values()))} ({detail})")
     if code not in ACCEPTABLE_RETURN_CODES:
         if kibe.get("total", 0) == 0 and admin.get("total", 0) == 0:
-            lines.append(f"• Lỗi runner: mã thoát {code} (kẹt Workbook lock hoặc OneDrive chưa hydrate)")
+            lines.append(f"• Lỗi runner: mã thoát {code} (khởi động runner thất bại)")
         else:
             lines.append(f"• Lỗi runner: mã thoát {code}")
     if trace_path:

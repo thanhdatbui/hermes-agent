@@ -20,7 +20,7 @@ def main():
             capture_output=True,
             text=True,
             encoding="utf-8",
-            errors="replace"
+            errors="replace", creationflags=subprocess.CREATE_NO_WINDOW
         )
     except Exception as e:
         print(f"❌ ERROR executing tracker script: {e}")

@@ -76,7 +76,7 @@ def is_download_running():
         out = subprocess.check_output(
             'wmic process where "name=\'python.exe\'" get commandline',
             shell=True, text=True, errors="replace", timeout=5,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            creationflags=subprocess.CREATE_NO_WINDOW,
         )
         out_lower = out.lower()
         if "download_by_niche.py" in out_lower or "download_all_sources.py" in out_lower or "auto_rescan_loop.py" in out_lower or "smart_gaixinh" in out_lower or "distribute_exclusive" in out_lower or "clean_vn" in out_lower or "run_admin_clean_vn" in out_lower or "run_admin_downloader" in out_lower:
@@ -108,7 +108,7 @@ def is_render_running():
         out = subprocess.check_output(
             'wmic process where "name=\'python.exe\' or name=\'ffmpeg.exe\'" get commandline',
             shell=True, text=True, errors="replace", timeout=5,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            creationflags=subprocess.CREATE_NO_WINDOW,
         )
         out_lower = out.lower()
         if "random_batch_render.py" in out_lower or "run_render" in out_lower or "ffmpeg" in out_lower or "admin_render_chain" in out_lower:
@@ -258,7 +258,7 @@ PREV_SNAPSHOT_PATH = r"D:\Taadaa\runtime\kibe\cron-state\farm_render_download_la
 def fetch_admin_stats_remote():
     try:
         cmd = ['ssh', '-o', 'ConnectTimeout=3', 'admin-farm', 'python -c "import sys; sys.path.append(r\'%LOCALAPPDATA%\\hermes\\scripts\'); import farm_render_download_watchdog as f, json; h = f.detect_host(); is_dl = f.is_download_running(); sf, s30, s45, smp4 = f.get_source_video_stats(h); is_rd = f.is_render_running(); tst, trd = f.get_render_stats(h); print(json.dumps({\'name\': h[\'name\'], \'video_goc\': h[\'video_goc\'], \'render_root\': h[\'render_root\'], \'is_dl\': is_dl, \'src_folders\': sf, \'src_ge30\': s30, \'src_ge45\': s45, \'src_mp4\': smp4, \'is_rd\': is_rd, \'tik_stats\': tst, \'total_rendered\': trd}))"']
-        res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=8)
+        res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=8, creationflags=subprocess.CREATE_NO_WINDOW)
         if res.returncode == 0:
             for line in res.stdout.splitlines():
                 line = line.strip()

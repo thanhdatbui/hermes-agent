@@ -34,7 +34,7 @@ def main(*args, **kwargs):
     if kwargs.get("mode"):
         cmd.append(f"--mode={kwargs['mode']}")
     cmd.extend(sys.argv[1:])
-    proc = subprocess.run(cmd, cwd=WORKDIR, capture_output=True, text=True)
+    proc = subprocess.run(cmd, cwd=WORKDIR, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
     if proc.stdout:
         sys.stdout.write(proc.stdout)
         sys.stdout.flush()

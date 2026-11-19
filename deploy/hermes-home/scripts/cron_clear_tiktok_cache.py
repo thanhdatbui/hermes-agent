@@ -87,7 +87,7 @@ def get_connected_devices(cluster: dict) -> dict[str, str]:
     cluster["reachable"] = False
     for attempt in range(2):
         try:
-            proc = subprocess.run(adb_cmd, capture_output=True, text=True, timeout=15, **WIN_KWARGS)
+            proc = subprocess.run(adb_cmd, capture_output=True, text=True, timeout=15, creationflags=subprocess.CREATE_NO_WINDOW)
             if proc.returncode != 0:
                 raise RuntimeError(proc.stderr.strip() or f"adb exited with code {proc.returncode}")
             cluster["reachable"] = True
@@ -169,7 +169,7 @@ def clear_device_cache(m_num: int, serial: str, cluster: dict) -> tuple[int, str
     try:
         with lock:
             try:
-                p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=240, **WIN_KWARGS)
+                p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=240, creationflags=subprocess.CREATE_NO_WINDOW)
                 out = p.stdout.strip() or p.stderr.strip()
                 if p.returncode == 0:
                     msg = f"[OK] Machine {m_num}: {out}"
@@ -193,7 +193,7 @@ def clear_device_cache(m_num: int, serial: str, cluster: dict) -> tuple[int, str
                         env=env,
                         capture_output=True,
                         timeout=10,
-                        **WIN_KWARGS,
+                        creationflags=subprocess.CREATE_NO_WINDOW,
                     )
                 except Exception:
                     pass

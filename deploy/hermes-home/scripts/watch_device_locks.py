@@ -183,7 +183,7 @@ def run_watchdog():
             if not Path(py_bin).exists():
                 py_bin = sys.executable
             import subprocess
-            subprocess.run([py_bin, "-B", str(reap_script)], timeout=120, capture_output=True, check=False)
+            subprocess.run([py_bin, "-B", str(reap_script)], timeout=120, capture_output=True, check=False, creationflags=subprocess.CREATE_NO_WINDOW)
         except Exception as e:
             print(f"[watchdog] Warning: failed to run reap script preflight: {e}")
 

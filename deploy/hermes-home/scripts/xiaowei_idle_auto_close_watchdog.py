@@ -25,7 +25,7 @@ import subprocess
 import threading
 from datetime import datetime
 
-CREATE_NO_WINDOW = 0x08000000 if sys.platform == 'win32' else 0
+CREATE_NO_WINDOW = 0x08000000
 
 # Đảm bảo stdout luôn dùng utf-8 tránh lỗi charmap cp1252 trên Windows console
 if hasattr(sys.stdout, "reconfigure"):

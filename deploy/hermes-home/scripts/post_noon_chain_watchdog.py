@@ -42,7 +42,7 @@ if not Path(PYTHON_EXE).exists():
     PYTHON_EXE = sys.executable
 
 POWERSHELL_EXE = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
-CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
+CREATE_NO_WINDOW = 0x08000000
 
 RUN_ID = ""
 CLUSTER_LABELS = {"KIBE": "MÁY 1-80", "ADMIN": "MÁY 201-280"}
@@ -197,7 +197,7 @@ def run_gmail_batch(dry_run: bool = False) -> tuple[int, str]:
               "$env:GMAIL_REG_PYTHON_EXE='D:\\Taadaa\\python-envs\\automation\\Scripts\\python.exe'; "
               "& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./run_all.ps1\n")
     try:
-        pa = subprocess.run(_build_admin_powershell_command(ps_a), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5400)
+        pa = subprocess.run(_build_admin_powershell_command(ps_a), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5400, creationflags=subprocess.CREATE_NO_WINDOW)
         outs.append(f"=== CLUSTER ADMIN (MÁY 201-280) ===\n{pa.stdout}\n{pa.stderr}")
         ac = pa.returncode
     except Exception as exc:
@@ -265,7 +265,7 @@ def run_tiktok_2fa_batch(dry_run: bool = False) -> tuple[int, str]:
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=5400,
+            timeout=5400, creationflags=subprocess.CREATE_NO_WINDOW,
         )
         outputs.append(f"=== CLUSTER ADMIN (MÁY 201-280) ===\n{proc_admin.stdout}\n{proc_admin.stderr}")
         admin_code = proc_admin.returncode
