@@ -320,9 +320,12 @@ def test_stream_consumer_display_repairs_mojibake():
 
 
 @pytest.mark.parametrize(("broken", "expected"), [
-    ("#### â�Œ Lỗi", "#### ❌ Lỗi"),
-    ("chặn mờ�i lệnh", "chặn mọi lệnh"),
-    ("Mờ�i tác vụ", "Mọi tác vụ"),
+    ("#### ❌ Lỗi", "#### ❌ Lỗi"),
+    ("chặn mọi lệnh", "chặn mọi lệnh"),
+    ("Mọi tác vụ", "Mọi tác vụ"),
+    ("## \u00f0\u0178\ufffd\u203a BÁO CÁO PHÂN TÁCH THEO KHUNG 5 TRỤ CỘT", "## 🏛 BÁO CÁO PHÂN TÁCH THEO KHUNG 5 TRỤ CỘT"),
+    ("## \u00f0\u0178\u203a BÁO CÁO PHÂN TÁCH THEO KHUNG 5 TRỤ CỘT", "## 🏛 BÁO CÁO PHÂN TÁCH THEO KHUNG 5 TRỤ CỘT"),
+    ("lời nhắc \u00f0\u0178 rác", "lời nhắc  rác"),
 ])
 def test_repairs_leftovers_of_old_repairs(broken, expected):
     assert repair_mojibake(broken) == expected

@@ -140,15 +140,39 @@ def _repair_dropped_viet(text: str) -> str:
         text = _DROPPED_D_RE.sub("\u0110", text)
     if "\u00c3\ufffd" in text:  # Á = C3 81 (Í/Ý share the lost-byte shape)
         text = text.replace("\u00c3\ufffd", "\u00c1")
-    if "â�" in text:  # dingbats E2 9D xx (❌ ❗ ❤) lost their 0x9D
+    if "\u00e2\ufffd" in text:  # dingbats E2 9D xx (❌ ❗ ❤) lost their 0x9D
         text = _DROPPED_DINGBAT_RE.sub(_decode_dingbat, text)
-    if "�" in text:  # "mờ�i": an older repair's leftover of "mọi"
-        text = _OLD_MOI_RE.sub(lambda m: m.group(1) + "ọi", text)
+    if "\u1edd\ufffd" in text:  # "mọi": an older repair's leftover of "mọi"
+        text = _OLD_MOI_RE.sub(lambda m: m.group(1) + "\u1ecd\u0069", text)
+    if "\u00f0\u0178" in text:  # 4-byte emojis F0 9F xx xx whose byte 3 was lost in cp1252
+        text = _DROPPED_EMOJI_RE.sub(_decode_dropped_emoji, text)
+        text = _STRAY_EMOJI_RE.sub("", text)
     return text
 
 
-_DROPPED_DINGBAT_RE = re.compile(rf"â�({_C})")
-_OLD_MOI_RE = re.compile(r"(?<![^\W\d_])([mM])ờ�i")
+_DROPPED_DINGBAT_RE = re.compile(rf"\u00e2\ufffd({_C})")
+_OLD_MOI_RE = re.compile(r"(?<![^\W\d_])([mM])\u1edd\ufffdi")
+_DROPPED_EMOJI_RE = re.compile(rf"\u00f0\u0178[\ufffd\?]?(?:([\x81\x8d\x8f\x90\x9d])|({_C}))")
+_STRAY_EMOJI_RE = re.compile(r"\u00f0\u0178[\ufffd\?]?")
+_EMOJI_DEFAULT_B3: dict[int, int] = {
+    0x9B: 0x8F, 0x86: 0x8F, 0x85: 0x8F, 0x94: 0x8F, 0xA0: 0x8F, 0xA2: 0x8F,
+    0xA5: 0x8F, 0xA6: 0x8F, 0xB7: 0x8F, 0x80: 0x8D, 0x8E: 0x8D, 0x95: 0x8D,
+    0xBA: 0x8D, 0xBB: 0x8D, 0xB6: 0x90, 0xB1: 0x90,
+}
+
+
+def _decode_dropped_emoji(m: "re.Match[str]") -> str:
+    tok = m.group(2)
+    if not tok:
+        return ""
+    b4 = int(tok[-2:], 16) if len(tok) > 1 else _BYTE_FOR_CHAR.get(tok)
+    if b4 is None or not (0x80 <= b4 <= 0xBF):
+        return ""
+    b3 = _EMOJI_DEFAULT_B3.get(b4, 0x8F)
+    try:
+        return bytes([0xF0, 0x9F, b3, b4]).decode("utf-8")
+    except (KeyError, UnicodeDecodeError):
+        return ""
 
 
 def _decode_dingbat(m: "re.Match[str]") -> str:
