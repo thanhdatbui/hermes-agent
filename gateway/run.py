@@ -6715,9 +6715,21 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         now = datetime.now()
         scheduled = 0
         for entry in candidates:
-            marker = entry.last_resume_marked_at or entry.updated_at
-            if marker is not None and (now - marker).total_seconds() > window:
-                continue
+            _last_msg_fn = getattr(self.session_store, "_last_message_at", None)
+            last_msg_at = None
+            if callable(_last_msg_fn):
+                try:
+                    res = _last_msg_fn(entry.session_id)
+                    if isinstance(res, datetime):
+                        last_msg_at = res
+                except Exception:
+                    last_msg_at = None
+            ref_time = last_msg_at or entry.updated_at
+            if isinstance(ref_time, datetime):
+                if hasattr(ref_time, "tzinfo") and ref_time.tzinfo is not None:
+                    ref_time = ref_time.replace(tzinfo=None)
+                if (now - ref_time).total_seconds() > window:
+                    continue
 
             # Already being resumed (e.g. scheduled at startup and still
             # in-flight) — don't synthesize a second continuation turn.

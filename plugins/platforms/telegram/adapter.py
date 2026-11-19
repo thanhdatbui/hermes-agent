@@ -2902,6 +2902,12 @@ class TelegramAdapter(BasePlatformAdapter):
         """
         if not self._bot:
             return None
+        if self.config.extra.get("disable_auto_create_topics", False) or os.getenv("TELEGRAM_DISABLE_AUTO_CREATE_TOPICS", "").lower() in ("1", "true", "yes"):
+            logger.info(
+                "[%s] Auto-creation of DM topic '%s' in chat %s is blocked (disable_auto_create_topics=True)",
+                self.name, name, chat_id,
+            )
+            return None
         name = self._sanitize_outgoing_text(name)
         try:
             kwargs: Dict[str, Any] = {"chat_id": chat_id, "name": name}
@@ -9149,6 +9155,10 @@ def _apply_yaml_config(yaml_cfg: dict, telegram_cfg: dict) -> dict | None:
 
     if "disable_topic_auto_rename" in telegram_cfg:
         extras.setdefault("disable_topic_auto_rename", telegram_cfg["disable_topic_auto_rename"])
+    if "disable_auto_create_topics" in telegram_cfg:
+        extras.setdefault("disable_auto_create_topics", telegram_cfg["disable_auto_create_topics"])
+    if not os.getenv("TELEGRAM_DISABLE_AUTO_CREATE_TOPICS") and "disable_auto_create_topics" in telegram_cfg:
+        os.environ["TELEGRAM_DISABLE_AUTO_CREATE_TOPICS"] = str(telegram_cfg["disable_auto_create_topics"]).lower()
 
     _effective_rm = telegram_cfg.get("require_mention", yaml_cfg.get("require_mention"))
     if _effective_rm is not None and not os.getenv("TELEGRAM_REQUIRE_MENTION"):

@@ -1138,6 +1138,11 @@ async def test_startup_auto_resume_skips_stale_entries():
     assert scheduled == 0
     adapter.handle_message.assert_not_called()
 
+    # Session co last_resume_marked_at moi (vi du do reboot drain) nhung last_message_at cu van bi skip
+    stale_entry.last_resume_marked_at = datetime.now()
+    runner.session_store._last_message_at = MagicMock(return_value=stale_marker)
+    assert runner._schedule_resume_pending_sessions() == 0
+
 
 @pytest.mark.asyncio
 async def test_startup_auto_resume_skips_suspended_and_originless():
