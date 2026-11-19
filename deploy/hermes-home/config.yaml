@@ -28,6 +28,7 @@ providers:
     models:
       ag-claude: {}
       ag-gemini-pool-3:
+        context_length: 1000000
         supports_vision: true
         stale_timeout_seconds: 900
         request_timeout_seconds: 600
@@ -196,6 +197,7 @@ auxiliary:
   compression:
     provider: omni
     model: ag-gemini-pool-3
+    context_length: 1000000
     fallback_chain:
     - model: omni-free
       provider: omni

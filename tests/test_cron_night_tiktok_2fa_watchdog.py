@@ -265,7 +265,7 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
         self.assertIn("BÁO CÁO 2FA TIKTOK", m["send_telegram_report"].call_args[0][1])
 
     def test_gmail_failure_does_not_block_2fa(self):
-        ret, m = self._run_main(["--force"], gmail_result=(1, ""), batch_result=(0, self.TOTAL_OUT))
+        ret, m = self._run_main(["--lane", "all", "--force"], gmail_result=(1, ""), batch_result=(0, self.TOTAL_OUT))
         self.assertEqual(ret, 1)
         m["run_night_batch"].assert_called_once()
         self.assertEqual([c[0][0] for c in m["send_telegram_report"].call_args_list], ["-5139245637", "-5468653590"])

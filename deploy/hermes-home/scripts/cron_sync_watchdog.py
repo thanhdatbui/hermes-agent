@@ -3,7 +3,7 @@
 """cron_sync_watchdog.py
 Tự động đồng bộ jobs.json và scripts giữa Kibe runtime, Git deploy và OneDrive Shared.
 """
-
+# === Step 1: Architecture and Imports ===
 from __future__ import annotations
 
 import argparse
@@ -18,6 +18,9 @@ from pathlib import Path
 KIBE_JOBS = Path(os.path.expanduser(r"~\AppData\Local\hermes\cron\jobs.json"))
 DEPLOY_JOBS = Path(r"D:\Taadaa\Hermes\deploy\hermes-home\cron\jobs.json")
 ONEDRIVE_JOBS = Path(r"D:\OneDrive\Taadaa_Sync_Shared\hermes-cron\jobs.json")
+
+KIBE_CONFIG = Path(os.path.expanduser(r"~\AppData\Local\hermes\config.yaml"))
+DEPLOY_CONFIG = Path(r"D:\Taadaa\Hermes\deploy\hermes-home\config.yaml")
 
 KIBE_SCRIPTS = Path(os.path.expanduser(r"~\AppData\Local\hermes\scripts"))
 DEPLOY_SCRIPTS = Path(r"D:\Taadaa\Hermes\deploy\hermes-home\scripts")
@@ -150,16 +153,31 @@ def sync_scripts(force: bool = False) -> int:
     return synced_count
 
 
+def sync_config(force: bool = False) -> bool:
+    if not DEPLOY_CONFIG.exists():
+        return False
+    try:
+        res = sync_file(DEPLOY_CONFIG, KIBE_CONFIG, force=force)
+        if res == "copied":
+            print(f"[SYNC] Updated config.yaml -> {KIBE_CONFIG}")
+            return True
+        return False
+    except Exception as e:
+        sys.stderr.write(f"[SYNC ERROR] config.yaml: {e}\n")
+        return False
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Watchdog tự động đồng bộ cron và scripts toàn farm")
     parser.add_argument("--force", action="store_true", help="Buộc đồng bộ toàn bộ ngay lập tức")
     args = parser.parse_args()
 
+    config_changed = sync_config(force=args.force)
     jobs_changed = sync_jobs(force=args.force)
     scripts_synced = sync_scripts(force=args.force)
 
-    if jobs_changed or scripts_synced > 0 or args.force:
-        print(f"[CRON-SYNC] Hoàn tất đồng bộ: jobs_changed={jobs_changed}, scripts_synced={scripts_synced}")
+    if config_changed or jobs_changed or scripts_synced > 0 or args.force:
+        print(f"[CRON-SYNC] Hoàn tất đồng bộ: config_changed={config_changed}, jobs_changed={jobs_changed}, scripts_synced={scripts_synced}")
 
     return 0
 

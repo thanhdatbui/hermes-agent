@@ -859,10 +859,10 @@ def _handle_phase_crash(save, chat_id: str, title: str, today_str: str, dry_run:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Night Chain Watchdog (Reg Gmail -> Add 2FA TikTok)")
+    parser = argparse.ArgumentParser(description="Night Chain Watchdog (Add 2FA TikTok ban đêm)")
     parser.add_argument("--dry-run", action="store_true", help="Run in dry-run mode")
     parser.add_argument("--force", action="store_true", help="Bypass time window, idempotency and session checks")
-    parser.add_argument("--lane", choices=("gmail", "tiktok", "all"), default="all", help="Run only the selected phase (default: all)")
+    parser.add_argument("--lane", choices=("gmail", "tiktok", "all"), default="tiktok", help="Run only the selected phase (default: tiktok)")
     args = parser.parse_args()
 
     global CORRELATION_ID
