@@ -228,10 +228,10 @@ def _run_registration(candidate: Mapping) -> tuple[str, int]:
     if farm == "Kibe":
         env = dict(os.environ)
         env["PYTHONPATH"] = str(AUTOMATION_CORE_SRC) + os.pathsep + env.get("PYTHONPATH", "")
-        proc = subprocess.run([str(PYTHON_EXE if PYTHON_EXE.exists() else Path(sys.executable)), str(GMAIL_SCRIPT), mid, "--ss"], cwd=GMAIL_REPO_DIR, env=env, capture_output=True, text=True, timeout=420)
+        proc = subprocess.run([str(PYTHON_EXE if PYTHON_EXE.exists() else Path(sys.executable)), str(GMAIL_SCRIPT), mid, "--ss"], cwd=GMAIL_REPO_DIR, env=env, capture_output=True, text=True, timeout=420, creationflags=subprocess.CREATE_NO_WINDOW)
     else:
         command = f"Set-Location 'D:\\Taadaa\\register gmail'; & 'D:\\Taadaa\\python-envs\\automation\\Scripts\\python.exe' 'D:\\Taadaa\\register gmail\\gmail_reg_v10.py' {mid} --ss"
-        proc = subprocess.run([str(Path(sys.executable)), str(ADMIN_SSH), "--timeout", "420", "--powershell", command], capture_output=True, text=True, timeout=420)
+        proc = subprocess.run([str(Path(sys.executable)), str(ADMIN_SSH), "--timeout", "420", "--powershell", command], capture_output=True, text=True, timeout=420, creationflags=subprocess.CREATE_NO_WINDOW)
     return ("success" if proc.returncode == 0 else "failed"), proc.returncode
 
 
