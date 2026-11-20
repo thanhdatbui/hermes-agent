@@ -31,6 +31,8 @@ DEFAULT_WIDGET_POS = (810, 260)
 SCRIPT_PATH = r"D:\Taadaa\automation-core\scripts\clear-tiktok-cache.py"
 MAX_WORKERS = 20
 WIN_KWARGS = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
+_console_python = os.path.join(os.path.dirname(sys.executable), "python.exe")
+CHILD_PYTHON = _console_python if os.path.exists(_console_python) else sys.executable
 
 CLUSTERS = [
     {
@@ -151,7 +153,7 @@ def clear_device_cache(m_num: int, serial: str, cluster: dict) -> tuple[int, str
         return m_num, serial, False, f"[ERROR] Machine {m_num} lock init failed: {exc}", c_name
 
     cmd = [
-        sys.executable,
+        CHILD_PYTHON,
         SCRIPT_PATH,
         "--machine", str(m_num),
         "--serial", serial,
@@ -313,6 +315,7 @@ def main() -> int:
         sys.stderr.write(f"[CRON][DRY-RUN] Would clear {len(target_machines)} machines; state unchanged.\n")
         return 0
 
+    sys.stderr.write(f"[CRON][TELEMETRY] launcher={CHILD_PYTHON} is_pythonw={sys.executable.lower().endswith('pythonw.exe')}\n")
     sys.stderr.write(f"[CRON] Starting concurrent TikTok cache clear on {len(target_machines)} machines...\n")
 
     success_machines: list[int] = []
