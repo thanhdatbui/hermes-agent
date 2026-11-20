@@ -275,11 +275,11 @@ def main() -> int:
     now_hour = datetime.now().hour
 
     if not args.force:
-        if not (3 <= now_hour <= 5):
+        is_night_window = (3 <= now_hour <= 5) and is_ca4_finished(today_str)
+        is_noon_catchup_window = (14 <= now_hour <= 18)
+        if not (is_night_window or is_noon_catchup_window):
             return 0
         if is_feed_runner_active():
-            return 0
-        if not is_ca4_finished(today_str):
             return 0
 
     state_data = load_state(today_str)
@@ -451,6 +451,10 @@ def main() -> int:
                 report.append(f"  - Máy {m:02d}: {reason}")
         else:
             report.append(f"• Lỗi (0)")
+
+    screencap_artifact = Path("D:/Taadaa/reports/m18_cache_cleared.png")
+    if screencap_artifact.is_file():
+        report.append(f"\nMEDIA:{screencap_artifact.resolve()}")
 
     print("\n".join(report))
     if all(cluster.get("reachable", True) for cluster in CLUSTERS) or args.force:
