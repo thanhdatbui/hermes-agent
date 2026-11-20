@@ -78,6 +78,11 @@ class TestHourlyGmailReg:
         (lock_dir / "machine_7.lock.json").write_text("{}", encoding="utf-8")
         assert not wd.is_machine_idle(7, lock_dirs=(lock_dir, codex_dir), next_slot_gap=60)
         assert not wd.is_machine_idle(8, lock_dirs=(lock_dir, codex_dir), next_slot_gap=44)
+        # Verify .lock does not lock the entire farm
+        (lock_dir / "machine_7.lock.json").unlink()
+        (lock_dir / "machine_9.lock").write_text("", encoding="utf-8")
+        assert not wd.is_machine_idle(9, lock_dirs=(lock_dir, codex_dir), next_slot_gap=60)
+        assert wd.is_machine_idle(10, lock_dirs=(lock_dir, codex_dir), next_slot_gap=60)
 
     def test_daily_report_format(self):
         state = {

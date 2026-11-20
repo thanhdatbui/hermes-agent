@@ -85,8 +85,9 @@ def is_machine_idle(machine_id: int | str, *, lock_dirs: Sequence[Path] = (LOCK_
             names = {str(data.get(k, "")) for k in ("machine_id", "machine", "mid", "device_id")}
             if needle in names or needle in path.stem:
                 return False
-        if any(directory.glob("*.lock")):
-            return False
+        for path in directory.glob("*.lock"):
+            if needle in path.stem or needle in path.name:
+                return False
     return True
 
 
@@ -228,10 +229,10 @@ def _run_registration(candidate: Mapping) -> tuple[str, int]:
     if farm == "Kibe":
         env = dict(os.environ)
         env["PYTHONPATH"] = str(AUTOMATION_CORE_SRC) + os.pathsep + env.get("PYTHONPATH", "")
-        proc = subprocess.run([str(PYTHON_EXE if PYTHON_EXE.exists() else Path(sys.executable)), str(GMAIL_SCRIPT), mid, "--ss"], cwd=GMAIL_REPO_DIR, env=env, capture_output=True, text=True, timeout=420, creationflags=subprocess.CREATE_NO_WINDOW)
+        proc = subprocess.run([str(PYTHON_EXE if PYTHON_EXE.exists() else Path(sys.executable)), str(GMAIL_SCRIPT), mid, "--ss"], cwd=GMAIL_REPO_DIR, env=env, capture_output=True, text=True, timeout=660, creationflags=subprocess.CREATE_NO_WINDOW)
     else:
         command = f"Set-Location 'D:\\Taadaa\\register gmail'; & 'D:\\Taadaa\\python-envs\\automation\\Scripts\\python.exe' 'D:\\Taadaa\\register gmail\\gmail_reg_v10.py' {mid} --ss"
-        proc = subprocess.run([str(Path(sys.executable)), str(ADMIN_SSH), "--timeout", "420", "--powershell", command], capture_output=True, text=True, timeout=420, creationflags=subprocess.CREATE_NO_WINDOW)
+        proc = subprocess.run([str(Path(sys.executable)), str(ADMIN_SSH), "--timeout", "660", "--powershell", command], capture_output=True, text=True, timeout=660, creationflags=subprocess.CREATE_NO_WINDOW)
     return ("success" if proc.returncode == 0 else "failed"), proc.returncode
 
 
@@ -272,17 +273,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         state.setdefault("runs", []).append({"timestamp": current.isoformat(), "farm": farm, "machine_id": candidate["machine_id"], "status": status, "exit_code": code})
         # The cap is a machine-attempt cap, not a success cap.
         counts[farm] += 1
-    _save_state(state)
+        _save_state(state)
     return 0
 
 
 def is_feed_runner_active() -> bool:
+    # === Step: Check active feed runner processes ===
     try:
         import psutil
-        needles = ("tiktok_runner", "feed_session", "run_post")
-        for process in psutil.process_iter(["cmdline", "name"]):
-            command = " ".join(process.info.get("cmdline") or []).lower()
-            if any(needle in command for needle in needles):
+        my_pid = os.getpid()
+        for process in psutil.process_iter(["pid", "cmdline", "name"]):
+            if process.info.get("pid") == my_pid:
+                continue
+            cmd_list = process.info.get("cmdline") or []
+            command = " ".join(cmd_list).lower()
+            if not command:
+                continue
+            if any(k in command for k in (
+                "watchdog", "dispatch_worker", "gemini_web_worker", "sol_worker",
+                "claude_worker", "gate_b_planner", "unified_patch_pipeline",
+                "inspect", "pytest", "python -c"
+            )):
+                continue
+            if "run-feed-session" in command or "multi_machine_feed_session.py" in command or "tiktok_runner.py" in command:
                 return True
     except Exception:
         return False
