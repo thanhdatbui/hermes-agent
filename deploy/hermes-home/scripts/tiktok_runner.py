@@ -762,8 +762,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if _already_ran(window_key, state_file=cluster_state):
             continue
 
-        if effective_feed_row > 0:
-            _preflight_ensure_accounts(effective_feed_row, window_key, cluster=cluster)
+        preflight_row = effective_feed_row or row
+        if preflight_row > 0:
+            _preflight_ensure_accounts(preflight_row, window_key, cluster=cluster)
 
         row_machines = _get_machines_for_row(effective_feed_row, workbook_path=cluster_wb)
         valid_count = len(row_machines)
