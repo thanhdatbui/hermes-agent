@@ -452,6 +452,7 @@ def main() -> int:
         else:
             report.append(f"• Lỗi (0)")
 
+    # Step: Pick latest cleared machine screencap artifact dynamically
     screencap_artifact = None
     if success_machines:
         for m in reversed(success_machines):

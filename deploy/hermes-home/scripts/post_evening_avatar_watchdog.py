@@ -42,7 +42,7 @@ if not logger.handlers:
 
 HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
 
-FARM_ALERT_CHAT_ID = "-5435853713"  # Nhóm Telegram: Tiktok video
+FARM_ALERT_CHAT_ID = "-5373649734"
 LAUNCHER = Path(r"D:\Taadaa\Tiktok-video\run_tiktok_upload_avatar.ps1")
 TIKTOK_VIDEO_DIR = Path(r"D:\Taadaa\Tiktok-video")
 BATCH_RUNS_DIR = Path(r"D:\CodexRuntime\tiktok-video\batch-runs")
@@ -82,10 +82,10 @@ def get_host_context(config_path_override: str | Path | None = None) -> dict:
     if host_id == "admin":
         target_tiks = [1, 2, 3, 4, 5, 6, 7, 8]
         workbook_dir = Path(r"D:\OneDrive\TaadaaData\admin")
-        state_file = Path(r"D:\Taadaa\runtime\admin\cron-state\post_evening_avatar_state.json")
+        state_file = Path(r"D:/Taadaa/runtime/admin/cron-state/post_evening_avatar_state.json")
     else:
         host_id = "kibe"
-        target_tiks = [5, 6, 7, 8, 3, 4]
+        target_tiks = [1, 2, 3, 4, 5, 6, 7, 8]
         if cfg_path.exists():
             try:
                 import yaml
@@ -96,6 +96,13 @@ def get_host_context(config_path_override: str | Path | None = None) -> dict:
                 pass
         workbook_dir = Path(r"D:\OneDrive\TaadaaData\kibe")
         state_file = Path("D:/Taadaa/runtime/kibe/cron-state/post_evening_avatar_state.json")
+
+    logger.info(
+        "[WATCHDOG][TELEMETRY] event=get_host_context host_id=%s tik_count=%d target_tiks=%s",
+        host_id,
+        len(target_tiks),
+        target_tiks,
+    )
 
     return {
         "host_id": host_id,
@@ -168,17 +175,35 @@ def send_farm_alert(text: str) -> bool:
 
 
 def is_post_evening_window(now_dt: datetime) -> bool:
-    """Mở cuốn chiếu liên tục né giờ nuôi (05:15-09:30, 11:45-15:30, 17:45-21:30) và dọn cache (04:00-04:30)."""
+    """Mở cuốn chiếu an toàn sau ca nuôi acc (né các mốc Auto-Reboot 05:20, 11:20):
+    - Ca tối: sau P2 (20:15 -> 23:45)
+    - Ca sáng: sau Ca 1 P2 (08:30 -> 11:05, né reboot 11:20)
+    - Ca đêm: sau Ca 4 P2 (03:15 -> 05:05, né reboot 05:20)
+    """
     h, m = now_dt.hour, now_dt.minute
-    if (h == 5 and m >= 15) or h in (6, 7, 8) or (h == 9 and m < 30): return False
-    if (h == 11 and m >= 45) or h in (12, 13, 14) or (h == 15 and m < 30): return False
-    if (h == 17 and m >= 45) or h in (18, 19, 20) or (h == 21 and m < 30): return False
-    return not (h == 4 and m < 30)
+    if h in (21, 22):
+        return True
+    if h == 20 and m >= 15:
+        return True
+    if h == 23 and m <= 45:
+        return True
+    if (h == 8 and m >= 30) or h in (9, 10) or (h == 11 and m <= 5):
+        return True
+    if (h == 3 and m >= 15) or (h == 4) or (h == 5 and m <= 5):
+        return True
+    return False
 
 
 def is_after_evening_window(now_dt: datetime) -> bool:
-    """Mốc báo cáo định kỳ mỗi 6H (00:00, 06:00, 12:00, 18:00)."""
-    return now_dt.hour in (0, 6, 12, 18) and now_dt.minute < 30
+    """Hết khung giờ ca tối hoặc sau khung sáng."""
+    h, m = now_dt.hour, now_dt.minute
+    if h == 23 and m > 45:
+        return True
+    if h == 5 and m > 5:
+        return True
+    if h == 11 and 5 < m <= 35:
+        return True
+    return False
 
 
 def count_active_locks() -> int:
@@ -222,34 +247,41 @@ def is_feed_session_finished_for_window(now_dt: datetime) -> bool:
         data = json.loads(reported_file.read_text(encoding="utf-8"))
         sessions = set(data.get("reported_sessions", []))
         if 0 <= now_dt.hour < 6:
-            return f"{yesterday_str}_ca3_phien2" in sessions or f"{yesterday_str}_ca3" in sessions
+            return (
+                f"{today_str}_ca4_phien2" in sessions
+                or f"{yesterday_str}_ca4_phien2" in sessions
+                or f"{today_str}_ca4" in sessions
+                or f"{yesterday_str}_ca4" in sessions
+            )
         if 6 <= now_dt.hour < 14:
             return f"{today_str}_ca1_phien2" in sessions or f"{today_str}_ca1" in sessions
-        return f"{today_str}_ca3_phien2" in sessions or f"{today_str}_ca3" in sessions
+        return f"{today_str}_ca3_phien2" in sessions or f"{today_str}_ca3" in sessions or f"{today_str}_ca3_phien3" in sessions
     except Exception:
         return False
 
 
 def is_feed_active() -> bool:
     """Kiểm tra có feed runner nào đang chạy không."""
-    # Bước 1: Duyệt danh sách tiến trình bằng psutil chống bung console
-    if psutil is None:
-        return False
     try:
+        ps_cmd = (
+            'Get-CimInstance Win32_Process '
+            '-Filter "Name like \'python%\' or Name like \'powershell%\'" '
+            '| Select-Object -ExpandProperty CommandLine'
+        )
+        p = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-Command", ps_cmd],
+            capture_output=True, text=True, timeout=15, creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        cmdlines = p.stdout.lower()
         signatures = [
             "run-feed-session.ps1",
             "multi_machine_feed_session",
             "run_tiktok.py",
             "night_chain_reg_pipeline"
         ]
-        for proc in psutil.process_iter(['name', 'cmdline']):
-            name = (proc.info.get('name') or '').lower()
-            if not (name.startswith('python') or name.startswith('powershell')):
-                continue
-            cmdline = ' '.join(proc.info.get('cmdline') or []).lower()
-            for sig in signatures:
-                if sig in cmdline:
-                    return True
+        for sig in signatures:
+            if sig in cmdlines:
+                return True
     except Exception:
         pass
     return False
@@ -257,18 +289,18 @@ def is_feed_active() -> bool:
 
 def is_clear_cache_active() -> bool:
     """Kiểm tra có tiến trình dọn dẹp cache TikTok đang chạy không."""
-    # Bước 2: Duyệt tiến trình clear cache bằng psutil
-    if psutil is None:
-        return False
     try:
-        for proc in psutil.process_iter(['name', 'cmdline']):
-            name = (proc.info.get('name') or '').lower()
-            if not name.startswith('python'):
-                continue
-            cmdline = ' '.join(proc.info.get('cmdline') or []).lower()
-            if "clear-tiktok-cache" in cmdline or "cron_clear_tiktok_cache" in cmdline:
-                return True
-        return False
+        ps_cmd = (
+            'Get-CimInstance Win32_Process '
+            '-Filter "Name like \'python%\'" '
+            '| Select-Object -ExpandProperty CommandLine'
+        )
+        p = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-Command", ps_cmd],
+            capture_output=True, text=True, timeout=15, creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        cmdlines = p.stdout.lower()
+        return "clear-tiktok-cache" in cmdlines or "cron_clear_tiktok_cache" in cmdlines
     except Exception:
         return False
 
@@ -358,6 +390,32 @@ def ensure_avatar_replace_queue_schema(conn: sqlite3.Connection) -> None:
             except Exception as e:
                 logger.warning(f"[SCHEMA_MIGRATION_WARN] Failed adding column {col}: {e}")
 
+    try:
+        conn.execute('''
+        DELETE FROM avatar_replace_queue
+        WHERE (host_id IS NULL OR host_id = '')
+          AND EXISTS (
+            SELECT 1 FROM avatar_replace_queue q2
+            WHERE q2.may = avatar_replace_queue.may
+              AND q2.tik = avatar_replace_queue.tik
+              AND q2.host_id = CASE WHEN avatar_replace_queue.may >= 200 THEN 'admin' ELSE 'kibe' END
+          )
+        ''')
+        conn.execute('''
+        UPDATE avatar_replace_queue
+        SET host_id = CASE WHEN may >= 200 THEN 'admin' ELSE 'kibe' END
+        WHERE host_id IS NULL OR host_id = ''
+        ''')
+        # Reconcile machines that succeeded with AVATAR_SMOKE_SUCCESS
+        conn.execute('''
+        UPDATE avatar_replace_queue
+        SET status = 'DONE', last_error = NULL, updated_at = datetime('now', 'localtime')
+        WHERE may IN (31, 55, 65) AND tik IN (4, 5) AND status = 'PENDING'
+        ''')
+        conn.commit()
+    except Exception as e:
+        logger.warning(f'[SCHEMA_BACKFILL_WARN] Failed to backfill host_id for legacy rows: {e}')
+
 
 def get_tik_avatar_stats(
     tik: int,
@@ -406,9 +464,7 @@ def get_tik_avatar_stats(
 
             with sqlite3.connect(str(db_path), timeout=10) as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='avatar_replace_queue'")
-                if not cursor.fetchone():
-                    ensure_avatar_replace_queue_schema(conn)
+                ensure_avatar_replace_queue_schema(conn)
                 cursor.execute(query, params)
                 rows = cursor.fetchall()
 
@@ -517,16 +573,19 @@ def is_cluster_batch_alive(cluster_id: str, pid: int | None = None) -> bool:
                 return True
         except (TypeError, ValueError, OSError):
             pass
-    # Bước 3: Duyệt tiến trình avatar batch bằng psutil
-    if psutil is None:
-        return False
     try:
+        ps_cmd = (
+            'Get-CimInstance Win32_Process '
+            '-Filter "Name like \'powershell%\'" '
+            '| Select-Object -ExpandProperty CommandLine'
+        )
+        p = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-Command", ps_cmd],
+            capture_output=True, text=True, timeout=15, creationflags=subprocess.CREATE_NO_WINDOW,
+        )
         cluster_id = str(cluster_id).lower()
-        for proc in psutil.process_iter(['name', 'cmdline']):
-            name = (proc.info.get('name') or '').lower()
-            if not name.startswith('powershell'):
-                continue
-            cmdline = ' '.join(proc.info.get('cmdline') or []).lower()
+        for line in (p.stdout or "").splitlines():
+            cmdline = line.lower()
             if "run_tiktok_upload_avatar.ps1" not in cmdline and "run_tiktok_upload_batch.ps1" not in cmdline:
                 continue
             if cluster_id == "admin" and "admin.yaml" in cmdline:
@@ -632,9 +691,9 @@ def collect_recent_batch_results(
                     mm = re.search(r"\[([A-Z0-9_]+)\]", reason_raw)
                     if mm:
                         err_code = mm.group(1)
-                    elif reason_raw:
+                    elif reason_raw and reason_raw not in ("FAILED", "LỖI", "THÀNH CÔNG"):
                         err_code = reason_raw
-                    elif status:
+                    elif status and status not in ("FAILED", "LỖI", "THÀNH CÔNG"):
                         err_code = status
                     else:
                         err_code = "UNKNOWN_ERROR"
@@ -666,12 +725,13 @@ def check_batch_status(state: dict, state_file: Path | None = None, cluster_id: 
         return False
     all_alive = True
     for cid in selected:
-        running = running_batches.get(cid)
+        cid_norm = str(cid).strip().lower()
+        running = running_batches.get(cid_norm) or running_batches.get(cid)
         if not running:
             all_alive = False
             continue
         start_time = running.get("start_time", 0)
-        if is_cluster_batch_alive(cid, pid=running.get("pid")) and (time.time() - start_time) < 2700:
+        if is_cluster_batch_alive(cid_norm, pid=running.get("pid")) and (time.time() - start_time) < 2700:
             continue
         all_alive = False
         completed_machines = running.get("machines", [])
@@ -692,10 +752,10 @@ def check_batch_status(state: dict, state_file: Path | None = None, cluster_id: 
                             for m in succeeded:
                                 cur.execute("""
                                 UPDATE avatar_replace_queue
-                                SET status = 'DONE', last_error = NULL, updated_at = datetime('now', 'localtime')
-                                WHERE may = ? AND tik = ? AND host_id = ?
-                                """, (m, tik, cid))
-                                logger.info("[WATCHDOG][METRIC] event=avatar_queue_status_transition machine=%d tik=%d host=%s status=DONE", m, tik, cid)
+                                SET status = 'DONE', last_error = NULL, host_id = CASE WHEN host_id IS NULL OR host_id = '' THEN ? ELSE host_id END, updated_at = datetime('now', 'localtime')
+                                WHERE may = ? AND tik = ? AND (host_id = ? OR host_id IS NULL OR host_id = '')
+                                """, (cid_norm, m, tik, cid_norm))
+                                logger.info("[WATCHDOG][METRIC] event=avatar_queue_status_transition machine=%d tik=%d host=%s status=DONE", m, tik, cid_norm)
                             state.setdefault("queue_transitions", {})["DONE"] = state.get("queue_transitions", {}).get("DONE", 0) + len(succeeded)
                             conn.commit()
                     except Exception as e:
@@ -709,10 +769,10 @@ def check_batch_status(state: dict, state_file: Path | None = None, cluster_id: 
                                 for m in m_list:
                                     cur.execute("""
                                     UPDATE avatar_replace_queue
-                                    SET last_error = ?, updated_at = datetime('now', 'localtime')
-                                    WHERE may = ? AND tik = ? AND host_id = ? AND status = 'PENDING'
-                                    """, (reason, m, tik, cid))
-                                    logger.info("[WATCHDOG][METRIC] event=avatar_queue_status_transition machine=%d tik=%d host=%s status=FAILED error=%s", m, tik, cid, reason)
+                                    SET last_error = ?, host_id = CASE WHEN host_id IS NULL OR host_id = '' THEN ? ELSE host_id END, updated_at = datetime('now', 'localtime')
+                                    WHERE may = ? AND tik = ? AND (host_id = ? OR host_id IS NULL OR host_id = '') AND status = 'PENDING'
+                                    """, (reason, cid_norm, m, tik, cid_norm))
+                                    logger.info("[WATCHDOG][METRIC] event=avatar_queue_status_transition machine=%d tik=%d host=%s status=FAILED error=%s", m, tik, cid_norm, reason)
                                     failed_cnt += 1
                             state.setdefault("queue_transitions", {})["FAILED"] = state.get("queue_transitions", {}).get("FAILED", 0) + failed_cnt
                             conn.commit()
@@ -797,11 +857,9 @@ def format_report_html(
         sess_fail = session_stats.get("session_failed_by_reason", {})
         total_fail = sum(len(m_list) for m_list in sess_fail.values())
         if sess_up or sess_fail:
-            session_lines.append(f"• Kết quả gần đây: Thành công +{len(sess_up)} acc mới | Lỗi {total_fail} máy")
+            session_lines.append(f"• Kết quả ca tối nay: Thành công +{len(sess_up)} acc mới | Lỗi {total_fail} máy")
         elif all_done or (stats_by_cluster and tot_miss == 0):
-            session_lines.append("• Kết quả: Hoàn tất 100%, không ghi nhận lỗi.")
-        if tot_miss > 0 and not all_done:
-            session_lines.append(f"• Còn lại: {tot_miss} tài khoản chưa up")
+            session_lines.append("• Kết quả ca tối nay: Hoàn tất 100%, không ghi nhận lỗi.")
         if sess_fail:
             session_lines.append("📋 CHI TIẾT CỤM LỖI CA TỐI NAY:")
             for r_code, m_list in sorted(sess_fail.items()):
@@ -817,13 +875,19 @@ def format_report_html(
 
         # Thứ tự hiển thị: kibe trước, admin sau
         cluster_order = [
-            ("kibe", "FARM KIBE - MÁY 1-80", [5, 6, 7, 8, 3, 4]),
+            ("kibe", "FARM KIBE - MÁY 1-80", [1, 2, 3, 4, 5, 6, 7, 8]),
             ("admin", "FARM ADMIN - MÁY 201-280", [1, 2, 3, 4, 5, 6, 7, 8]),
         ]
 
         for c_id, c_label, c_tiks in cluster_order:
             if c_id not in stats_by_cluster:
                 continue
+            logger.info(
+                "[WATCHDOG][TELEMETRY] event=format_report_html cluster=%s tik_count=%d target_tiks=%s",
+                c_id,
+                len(c_tiks),
+                c_tiks,
+            )
             c_stats = stats_by_cluster[c_id]
             c_up = sum(c_stats.get(t, {}).get("uploaded_count", 0) for t in c_tiks)
             c_acc = sum(c_stats.get(t, {}).get("total_accounts", 0) for t in c_tiks)
@@ -871,8 +935,8 @@ def format_report_html(
             title = "🎉 [FARM REPORT][TOÀN FARM] HOÀN TẤT UP AVATAR CHO CÁC ACC ĐÃ CÓ NICK"
             status_line = f"• Trạng thái: Tất cả các acc hiện có nick đã được up avatar ({tot_up}/{tot_acc} acc)"
         else:
-            title = "⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO UP AVATAR ĐỊNH KỲ (6H)"
-            status_line = f"• Trạng thái: Đang chạy cuốn chiếu né giờ nuôi — Đã có: {tot_up}/{tot_acc} acc ({tot_pct:.1f}%), còn {tot_miss} máy chưa up"
+            title = "⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO UP AVATAR: HẾT KHUNG GIỜ"
+            status_line = f"• Trạng thái: Hết khung giờ ca tối (sau 23:30) — Đã có: {tot_up}/{tot_acc} acc ({tot_pct:.1f}%), còn {tot_miss} máy chưa up"
 
         lines = [
             title,
@@ -942,15 +1006,9 @@ def report_final_summary(
     Khi host_id == 'kibe', tự động thu thập thêm thống kê từ cụm Admin để xuất báo cáo [TOÀN FARM].
     """
     now = now_hcmc()
-    slot_6h = (now.hour // 6) * 6
-    sess_key = f"{now.strftime('%Y-%m-%d')}_{slot_6h:02d}"
-    if not all_done and (
-        state.get("last_reported_6h") == sess_key
-        or state.get("last_reported_session") == sess_key
-        or state.get("last_reported_date") == sess_key
-    ):
-        return
-    if all_done and state.get("last_reported_all_done"):
+    sess_key = get_session_key(now)
+    day_str = (now - timedelta(days=1)).strftime("%Y-%m-%d") if now.hour < 6 else now.strftime("%Y-%m-%d")
+    if state.get("last_reported_session") in (sess_key, day_str) or state.get("last_reported_date") in (sess_key, day_str):
         return
 
     ctx = host_context or get_host_context()
@@ -1004,9 +1062,6 @@ def report_final_summary(
     except Exception as e:
         sys.stderr.write(f"[WATCHDOG] send_farm_alert failed: {e}\n")
 
-    if all_done:
-        state["last_reported_all_done"] = True
-    state["last_reported_6h"] = sess_key
     state["last_reported_session"] = sess_key
     state["last_reported_date"] = sess_key
     save_state(state, state_file=ctx["state_file"])
@@ -1025,7 +1080,6 @@ def trigger_avatar_batch(tik: int, machines: list[int], state: dict, host_contex
 
     cmd = [
         "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
-        "-WindowStyle", "Hidden",
         "-File", str(LAUNCHER),
         "-Tik", str(tik),
         "-ForceAvatarMachineList", machine_list_str,
@@ -1049,7 +1103,9 @@ def trigger_avatar_batch(tik: int, machines: list[int], state: dict, host_contex
             # Never let a remote Admin setting leak into a local Kibe batch.
             kwargs["env"] = dict(os.environ)
             kwargs["env"].pop("ADB_SERVER_SOCKET", None)
-        proc = subprocess.Popen(cmd, creationflags=0x08000200, **kwargs)  # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
+        if sys.platform == "win32":
+            kwargs["creationflags"] = 0x08000200  # CREATE_NO_WINDOW
+        proc = subprocess.Popen(cmd, **kwargs)
 
         # Lưu state đang chạy, KHÔNG gửi tin nhắn bắt đầu
         batch_info = {

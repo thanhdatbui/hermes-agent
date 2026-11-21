@@ -121,6 +121,9 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
             decoded = base64.b64decode(b64_str).decode("utf-16le")
             self.assertIn("python_runner/run_batch_live_2fa.py", decoded)
             self.assertIn("--workbook-sheet 'Tài Khoản'", decoded)
+            self.assertIn("--require-sqlite", decoded)
+            kibe_cmd = m_sub.call_args_list[0][0][0]
+            self.assertIn("--require-sqlite", kibe_cmd)
 
     @patch("cron_night_tiktok_2fa_watchdog.subprocess.run")
     @patch("cron_night_tiktok_2fa_watchdog.hydrate_workbook", return_value=True)

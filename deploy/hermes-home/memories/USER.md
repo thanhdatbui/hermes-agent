@@ -1,3 +1,5 @@
 User supremacy: 'tao cho phép'/sudo override; Chrome/CDP Kal (jinrakal@gmail.com); SSOT SQLite farm_master.db & profile_data.db (GPM), cấm runtime Excel; killswitch soi socket/byte; trực diện; 100% tools; cơ giới O(1); >=45 clip; Zalo HKCU Run --relaunch-silently. Advisor all/both (Gemini+Claude). Cấm Tailscale cõng proxy data (R3G OOM); Direct WAN. Probe mạng cấm loop, Circuit Breaker (ngắt sau 3 timeouts). Tự động Advisor Critique. Zero whining/paralysis. CẤM tự ý cách ly (is_active=0) khi cứu được qua GPM CDP.
 §
 Điều tra đa máy check trực tiếp ổ node remote. Coordinator CẤM chạy qua gemini-web (thiếu tool calling); bắt buộc dùng API native tool calling.
+§
+User expects transparent attribution for Claude/worker invocations and requires real verification evidence before completion claims; do not report success from worker summaries alone.
