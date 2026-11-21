@@ -344,10 +344,9 @@ def main() -> int:
     # 1. Kiểm tra khung giờ né 3 ca cao điểm farm
     h, m = now.hour, now.minute
     in_window = not (
-        (5, 15) <= (h, m) <= (9, 30)
-        or (11, 45) <= (h, m) <= (15, 30)
-        or (17, 45) <= (h, m) <= (21, 30)
-        or (4, 0) <= (h, m) <= (4, 30)
+        (4, 0) <= (h, m) <= (9, 30)
+        or (11, 5) <= (h, m) <= (15, 30)
+        or (17, 5) <= (h, m) <= (21, 30)
     )
     if not in_window and not args.force and not args.dry_run:
         return 0

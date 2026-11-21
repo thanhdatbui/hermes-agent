@@ -60,12 +60,10 @@ LANE_CLAIM_TTL_SECONDS = 5400
 
 
 ROLLING_BLOCK_WINDOWS = (
-    ("dọn cache", (4, 0), (4, 30)),
+    ("dọn cache + đệm reboot sáng 05:20", (4, 0), (5, 5)),
     ("ca nuôi sáng", (5, 5), (9, 30)),
-    ("đệm ca trưa", (11, 5), (11, 35)),
-    ("ca nuôi trưa", (11, 45), (15, 30)),
-    ("đệm ca chiều", (17, 5), (17, 35)),
-    ("ca nuôi chiều", (17, 45), (21, 30)),
+    ("đệm reboot trưa 11:20 + ca nuôi trưa", (11, 5), (15, 30)),
+    ("đệm reboot chiều 17:20 + ca nuôi chiều", (17, 5), (21, 30)),
 )
 
 

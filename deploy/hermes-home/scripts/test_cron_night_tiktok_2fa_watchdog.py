@@ -47,10 +47,10 @@ def test_is_safe_rolling_window():
 
     # Né dọn cache (04:00 - 04:30)
     assert not is_safe_rolling_window(datetime(2026, 10, 15, 4, 15, tzinfo=HCMC))
-    assert is_safe_rolling_window(datetime(2026, 10, 15, 4, 45, tzinfo=HCMC))
+    assert is_safe_rolling_window(datetime(2026, 10, 15, 3, 30, tzinfo=HCMC))
 
-    # Khung giờ 5h sáng (ca nuôi sáng bắt đầu từ 05:05)
-    assert is_safe_rolling_window(datetime(2026, 10, 15, 5, 0, tzinfo=HCMC))
+    # Khung 04:00-05:05 chan luon: dem truoc reboot 05:20
+    assert not is_safe_rolling_window(datetime(2026, 10, 15, 5, 0, tzinfo=HCMC))
     assert not is_safe_rolling_window(datetime(2026, 10, 15, 5, 5, tzinfo=HCMC))
     assert not is_safe_rolling_window(datetime(2026, 10, 15, 5, 20, tzinfo=HCMC))
 
@@ -177,3 +177,7 @@ def test_main_hydrate_failure_blocked(monkeypatch, tmp_path):
     assert saved and saved[-1]['status'] == 'failed'
     assert 'non-acceptable return code 5' in saved[-1]['failure_reason']
 
+def test_reboot_slots_have_no_gap():
+    # Khe 11:35-11:45 / 17:35-17:45 / 04:30-05:05 tung cho 2FA khoi dong sat gio reboot
+    for h, m in ((4, 45), (11, 20), (11, 40), (17, 20), (17, 39), (17, 40)):
+        assert not is_safe_rolling_window(datetime(2026, 10, 15, h, m, tzinfo=HCMC))
