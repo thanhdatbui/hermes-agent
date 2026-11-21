@@ -46,9 +46,61 @@ class TestHourlyGmailReg:
         conn.commit()
         conn.close()
         now = datetime(2026, 1, 10, 12, 0)
-        candidates = wd.load_candidates(db, now=now, p0_machine_ids=set(), idle_checker=lambda mid: True)
+        candidates = wd.load_candidates(db, now=now, p0_machine_ids=set(), idle_checker=lambda mid: True, state={"runs": []})
         assert [c["machine_id"] for c in candidates] == [1, 3, 4]
         assert all(c["machine_id"] != 2 for c in candidates)
+
+    def test_failure_cooldown_24h(self, tmp_path):
+        # Step 1: Setup test database and state for 24h failure cooldown
+        db = tmp_path / "farm_master.db"
+        conn = sqlite3.connect(db)
+        conn.executescript(
+            """
+            CREATE TABLE machines (machine_id TEXT, owner TEXT, proxy_endpoint TEXT,
+                                   device_serial TEXT, source TEXT, run_id TEXT);
+            CREATE TABLE mailboxes (email TEXT, owner TEXT, machine_id INTEGER, created_at TEXT);
+            INSERT INTO machines VALUES ('1', 'Kibe', 'http://proxy-a:1001', '', '', '');
+            INSERT INTO machines VALUES ('2', 'Kibe', 'proxy-b:1002', '', '', '');
+            """
+        )
+        conn.commit()
+        conn.close()
+        now = datetime(2026, 1, 10, 12, 0)
+        # Step 2: Assert machine 1 is excluded (failed <24h) and machine 2 is eligible
+        state = {
+            "runs": [
+                {"timestamp": "2026-01-10T07:00:00", "farm": "Kibe", "machine_id": 1, "status": "failed", "exit_code": 1},
+                {"timestamp": "2026-01-09T10:00:00", "farm": "Kibe", "machine_id": 2, "status": "failed", "exit_code": 1},
+            ]
+        }
+        candidates = wd.load_candidates(db, now=now, p0_machine_ids=set(), idle_checker=lambda mid: True, state=state)
+        assert [c["machine_id"] for c in candidates] == [2]
+
+    def test_proxy_cooldown_24h(self, tmp_path):
+        # Step 1: Setup test database and state for 24h single-machine proxy cooldown
+        db = tmp_path / "farm_master.db"
+        conn = sqlite3.connect(db)
+        conn.executescript(
+            """
+            CREATE TABLE machines (machine_id TEXT, owner TEXT, proxy_endpoint TEXT,
+                                   device_serial TEXT, source TEXT, run_id TEXT);
+            CREATE TABLE mailboxes (email TEXT, owner TEXT, machine_id INTEGER, created_at TEXT);
+            INSERT INTO machines VALUES ('1', 'Kibe', 'http://shared-ip:1001', '', '', '');
+            INSERT INTO machines VALUES ('2', 'Kibe', 'http://shared-ip:1001', '', '', '');
+            INSERT INTO machines VALUES ('3', 'Kibe', 'http://clean-ip:1002', '', '', '');
+            """
+        )
+        conn.commit()
+        conn.close()
+        now = datetime(2026, 1, 10, 12, 0)
+        # Step 2: Assert proxy used within 24h blocks machine 2 but allows machine 3
+        state = {
+            "runs": [
+                {"timestamp": "2026-01-10T06:00:00", "farm": "Kibe", "machine_id": 1, "status": "success", "exit_code": 0, "proxy_key": "shared-ip:1001"},
+            ]
+        }
+        candidates = wd.load_candidates(db, now=now, p0_machine_ids=set(), idle_checker=lambda mid: True, state=state)
+        assert [c["machine_id"] for c in candidates] == [3]
 
     def test_distinct_proxy_per_farm(self):
         candidates = [

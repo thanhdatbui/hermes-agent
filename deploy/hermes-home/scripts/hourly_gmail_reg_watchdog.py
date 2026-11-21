@@ -32,6 +32,8 @@ CRON_SCHEDULE = "0 * * * *"
 FARMS = ("Kibe", "Admin")
 DAILY_CAP = 20
 COOLDOWN_DAYS = 4
+FAILURE_COOLDOWN_HOURS = 24
+PROXY_COOLDOWN_HOURS = 24
 GMAIL_REPORT_CHAT_ID = "-5139245637"
 FARM_MASTER_DB = Path(r"D:\Taadaa\data\farm_master.db")
 GPM_DB_PATH = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\profile\profile_data.db")
@@ -136,8 +138,16 @@ def _parse_time(value: object) -> datetime | None:
         return None
 
 
-def load_candidates(db_path: Path = FARM_MASTER_DB, *, now: datetime | None = None, p0_machine_ids: set[int] | None = None, idle_checker=is_machine_idle) -> list[dict]:
+def load_candidates(
+    db_path: Path = FARM_MASTER_DB,
+    *,
+    now: datetime | None = None,
+    p0_machine_ids: set[int] | None = None,
+    idle_checker=is_machine_idle,
+    state: Mapping | None = None,
+) -> list[dict]:
     """Read SSOT machines and return cooldown, P0, idle and proxy-eligible rows."""
+    # Step 1: Initialize timestamps and state cooldown constraints
     now = now or now_local()
     blocked_p0_ids = p0_machine_ids if p0_machine_ids is not None else globals()["p0_machine_ids"]()
     if not db_path.exists():
@@ -147,6 +157,29 @@ def load_candidates(db_path: Path = FARM_MASTER_DB, *, now: datetime | None = No
         machine_rows = conn.execute("SELECT machine_id, owner, proxy_endpoint FROM machines").fetchall()
     except sqlite3.Error:
         return []
+
+    # Step 2: Build 24h failure and proxy cooldown sets from state
+    current_state = state if state is not None else _read_state()
+    since_failure = now - timedelta(hours=FAILURE_COOLDOWN_HOURS)
+    since_proxy = now - timedelta(hours=PROXY_COOLDOWN_HOURS)
+    failed_machine_ids: set[int] = set()
+    used_proxies_24h: set[str] = set()
+    machine_proxy_map = {_machine_number(m_id): _proxy_host_port(p_end) for m_id, _, p_end in machine_rows}
+
+    for r in current_state.get("runs", []):
+        ts = _parse_time(r.get("timestamp"))
+        if not ts:
+            continue
+        mid = _machine_number(r.get("machine_id"))
+        if ts >= since_failure and (r.get("status") == "failed" or r.get("exit_code", 0) != 0):
+            if mid is not None:
+                failed_machine_ids.add(mid)
+        if ts >= since_proxy:
+            proxy_key = r.get("proxy_key") or (machine_proxy_map.get(mid) if mid is not None else "")
+            if proxy_key:
+                used_proxies_24h.add(proxy_key)
+
+    # Step 3: Filter eligible machines matching all cooldown & idle gates
     results = []
     try:
         for machine_id, owner, proxy_endpoint in machine_rows:
@@ -154,12 +187,23 @@ def load_candidates(db_path: Path = FARM_MASTER_DB, *, now: datetime | None = No
             mid = _machine_number(machine_id)
             if mid in blocked_p0_ids:
                 continue
+            if mid is not None and mid in failed_machine_ids:
+                continue
+            proxy_key = _proxy_host_port(proxy_endpoint)
+            if proxy_key and proxy_key in used_proxies_24h:
+                continue
             latest = _parse_time(_latest_gmail_reg(conn, machine_id))
             if latest is not None and now - latest < timedelta(days=COOLDOWN_DAYS):
                 continue
             if not idle_checker(machine_id):
                 continue
-            results.append({"machine_id": mid if mid is not None else machine_id, "farm": farm, "proxy_endpoint": proxy_endpoint or "", "last_reg_at": latest.isoformat() if latest else None})
+            results.append({
+                "machine_id": mid if mid is not None else machine_id,
+                "farm": farm,
+                "proxy_endpoint": proxy_endpoint or "",
+                "proxy_key": proxy_key,
+                "last_reg_at": latest.isoformat() if latest else None,
+            })
     finally:
         conn.close()
     return results
@@ -261,7 +305,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     counts = _runs_today(state, current)
     if all(counts[farm] >= DAILY_CAP for farm in FARMS):
         return 0
-    candidates = select_distinct_proxy_candidates(load_candidates(), per_farm=2)
+    candidates = select_distinct_proxy_candidates(load_candidates(state=state, now=current), per_farm=2)
     for candidate in candidates:
         farm = candidate["farm"]
         if counts[farm] >= DAILY_CAP:
@@ -270,7 +314,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             status, code = _run_registration(candidate)
         except Exception:
             status, code = "failed", 1
-        state.setdefault("runs", []).append({"timestamp": current.isoformat(), "farm": farm, "machine_id": candidate["machine_id"], "status": status, "exit_code": code})
+        proxy_key = _proxy_host_port(candidate.get("proxy_endpoint"))
+        state.setdefault("runs", []).append({
+            "timestamp": current.isoformat(),
+            "farm": farm,
+            "machine_id": candidate["machine_id"],
+            "status": status,
+            "exit_code": code,
+            "proxy_key": proxy_key,
+        })
         # The cap is a machine-attempt cap, not a success cap.
         counts[farm] += 1
         _save_state(state)
