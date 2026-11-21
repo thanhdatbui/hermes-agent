@@ -3,6 +3,16 @@ import pytest
 
 from agent.mojibake import has_mojibake, repair_mojibake
 
+@pytest.fixture(autouse=True)
+def _enable_dropped_guess(monkeypatch):
+    monkeypatch.setenv("HERMES_MOJIBAKE_GUESS_DROPPED", "1")
+
+
+def test_dropped_byte_guess_off_by_default(monkeypatch):
+    monkeypatch.delenv("HERMES_MOJIBAKE_GUESS_DROPPED")
+    assert repair_mojibake("giá»� hàng") == "giá»� hàng"
+
+
 ORIGINALS = [
     "Chào bạn, đây là tiếng Việt chuẩn",
     "Lỗi kiểm tra 🛠️ — “ok” …",

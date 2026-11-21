@@ -19,7 +19,8 @@ import os
 import re
 
 # Guessing a lost 0x81/0x8D/0x8F/0x90/0x9D byte is lossy; off by default.
-_GUESS_DROPPED = os.environ.get("HERMES_MOJIBAKE_GUESS_DROPPED") == "1"
+def _guess_dropped() -> bool:
+    return os.environ.get("HERMES_MOJIBAKE_GUESS_DROPPED") == "1"
 
 __all__ = ["repair_mojibake", "has_mojibake"]
 
@@ -138,7 +139,7 @@ def _repair_dropped_viet(text: str) -> str:
                 return m.group(0)
         return _pick_dropped_letter(prefix, suffix)
 
-    if _GUESS_DROPPED and "\u00e1\u00bb" in text:
+    if _guess_dropped() and "\u00e1\u00bb" in text:
         text = _DROPPED_RE.sub(sub, text)
     if "\u00c4" in text:  # Đ = C4 90, 0x90 lost
         text = _DROPPED_D_RE.sub("\u0110", text)
