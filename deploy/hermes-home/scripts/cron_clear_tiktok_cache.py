@@ -452,8 +452,18 @@ def main() -> int:
         else:
             report.append(f"• Lỗi (0)")
 
-    screencap_artifact = Path("D:/Taadaa/reports/m18_cache_cleared.png")
-    if screencap_artifact.is_file():
+    screencap_artifact = None
+    if success_machines:
+        for m in reversed(success_machines):
+            cand = Path(f"D:/Taadaa/reports/m{m}_cache_cleared.png")
+            if cand.is_file():
+                screencap_artifact = cand
+                break
+    if not screencap_artifact:
+        cand = Path("D:/Taadaa/reports/m18_cache_cleared.png")
+        if cand.is_file():
+            screencap_artifact = cand
+    if screencap_artifact and screencap_artifact.is_file():
         report.append(f"\nMEDIA:{screencap_artifact.resolve()}")
 
     print("\n".join(report))
