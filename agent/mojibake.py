@@ -247,6 +247,19 @@ def has_mojibake(text: str) -> bool:
     return repair_mojibake(text) != text
 
 
+# Step: Map common CJK bleed words emitted by multilingual LLMs during Vietnamese generation
+_CJK_BLEED_MAP: tuple[tuple[str, str], ...] = (
+    ("\u5224\u5b9a", "ph\u00e1n \u0111\u1ecbnh"),  # 判定 -> phán định
+    ("\u78ba\u5b9a", "x\u00e1c \u0111\u1ecbnh"),    # 確定 -> xác định
+    ("\u78ba\u8a8d", "x\u00e1c nh\u1eadn"),    # 確認 -> xác nhận
+    ("\u51e6\u7406", "x\u1eed l\u00fd"),       # 処理 -> xử lý
+    ("\u63a5\u7d9a", "k\u1ebft n\u1ed1i"),     # 接続 -> kết nối
+    ("\u8a2d\u5b9a", "c\u00e0i \u0111\u1eb7t"),   # 設定 -> cài đặt
+    ("\u72b6\u614b", "tr\u1ea1ng th\u00e1i"), # 状态 -> trạng thái
+    ("\u72c0\u614b", "tr\u1ea1ng th\u00e1i"), # 狀態 -> trạng thái
+)
+
+
 def repair_mojibake(text: str) -> str:
     """Return ``text`` with cp1252/latin1 mojibake repaired.
 
@@ -281,6 +294,11 @@ def repair_mojibake(text: str) -> str:
         if new != out:
             repaired = True
             out = new
+        # Step 4: Map multilingual CJK bleed words in Vietnamese context
+        for cjk_word, viet_word in _CJK_BLEED_MAP:
+            if cjk_word in out:
+                out = out.replace(cjk_word, viet_word)
+                repaired = True
         if repaired:
             for pattern, repl in _LEFTOVERS:
                 out = pattern.sub(repl, out)

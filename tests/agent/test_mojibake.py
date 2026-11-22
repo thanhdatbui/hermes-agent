@@ -61,6 +61,13 @@ def test_telegram_sanitizer_is_fail_safe():
     assert repair_mojibake(None) is None
 
 
+def test_repair_mojibake_cjk_bleed():
+    """Verify common CJK bleed words in Vietnamese generation are mapped to clean Vietnamese."""
+    assert repair_mojibake("Khi 1 Advisor bị 判定 là chết") == "Khi 1 Advisor bị phán định là chết"
+    assert repair_mojibake("Đã 確定 kết quả") == "Đã xác định kết quả"
+    assert repair_mojibake("Kiểm tra 状態") == "Kiểm tra trạng thái"
+
+
 def test_repairs_repr_escaped_continuation_bytes():
     assert repair_mojibake("tháº\xadt sự") == "thật sự"
     assert repair_mojibake("lÃ\\xa0 không") == "là không"
