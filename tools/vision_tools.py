@@ -859,6 +859,50 @@ def _should_use_native_vision_fast_path() -> bool:
         return False
 
 
+# Base64 image parts in tool results are re-sent every turn and some providers
+# (Google/Antigravity via OpenAI-compat) count the base64 text as ~1 token/char
+# rather than a flat image cost, so a 1.3 MB screenshot blows the 1M window while
+# Hermes' estimator sees ~1.5K tokens. Cap what we embed. 0 disables.
+_NATIVE_RESULT_MAX_B64 = int(os.environ.get("HERMES_NATIVE_VISION_MAX_B64", str(400 * 1024)))
+_NATIVE_RESULT_MAX_DIM = 1600
+
+
+def _shrink_data_url_for_context(data_url: str) -> str:
+    """Downscale an oversized image data URL to a small JPEG; return it unchanged on any failure."""
+    limit = _NATIVE_RESULT_MAX_B64
+    if limit <= 0 or not isinstance(data_url, str) or len(data_url) <= limit:
+        return data_url
+    try:
+        import base64 as _b64
+        import io as _io
+        from PIL import Image
+
+        header, _, payload = data_url.partition(",")
+        if not header.startswith("data:image/") or ";base64" not in header:
+            return data_url
+        img = Image.open(_io.BytesIO(_b64.b64decode(payload)))
+        img = img.convert("RGB")
+        if max(img.size) > _NATIVE_RESULT_MAX_DIM:
+            ratio = _NATIVE_RESULT_MAX_DIM / max(img.size)
+            img = img.resize((max(int(img.width * ratio), 64), max(int(img.height * ratio), 64)), Image.LANCZOS)
+        for _ in range(6):
+            for q in (80, 65, 50):
+                buf = _io.BytesIO()
+                img.save(buf, format="JPEG", quality=q)
+                candidate = "data:image/jpeg;base64," + _b64.b64encode(buf.getvalue()).decode("ascii")
+                if len(candidate) <= limit:
+                    logger.info(
+                        "Native vision image shrunk %.0f KB -> %.0f KB (%dx%d, q=%d)",
+                        len(data_url) / 1024, len(candidate) / 1024, img.width, img.height, q,
+                    )
+                    return candidate
+            img = img.resize((max(img.width // 2, 64), max(img.height // 2, 64)), Image.LANCZOS)
+        return candidate
+    except Exception as exc:
+        logger.warning("Native vision image shrink failed, keeping original: %s", exc)
+        return data_url
+
+
 def _build_native_vision_tool_result(
     image_url: str,
     question: str,
@@ -886,6 +930,10 @@ def _build_native_vision_tool_result(
     # The tool-result text part is intentionally minimal. The model already
     # has the user's original question in context; this just acknowledges
     # the image is now visible and reminds it what it was asked.
+    _shrunk = _shrink_data_url_for_context(image_data_url)
+    if _shrunk is not image_data_url:
+        image_data_url = _shrunk
+        image_size_bytes = (len(_shrunk) * 3) // 4
     text_part = (
         "Image loaded into your context — you can see it natively now. "
         "Use your built-in vision to answer the user."

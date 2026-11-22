@@ -303,3 +303,22 @@ class TestHandleVisionAnalyzeFastPath:
         assert isinstance(result, str)
         assert json.loads(result) == {"sentinel": "aux-path"}
         mock_aux.assert_called_once()
+
+
+def test_native_result_shrinks_oversized_screenshot():
+    import io
+    import os
+    from PIL import Image
+    from tools.vision_tools import _build_native_vision_tool_result
+
+    raw = os.urandom(1600 * 1200 * 3)
+    buf = io.BytesIO()
+    Image.frombytes("RGB", (1600, 1200), raw).save(buf, format="PNG")
+    big = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+    assert len(big) > 400 * 1024
+
+    result = _build_native_vision_tool_result("x.png", "q", big, len(buf.getvalue()))
+    url = result["content"][1]["image_url"]["url"]
+    assert url.startswith("data:image/jpeg;base64,")
+    assert len(url) <= 400 * 1024
+    assert result["meta"]["size_bytes"] < len(buf.getvalue())
