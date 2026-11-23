@@ -458,7 +458,7 @@ def build_system_prompt_parts(agent: Any, system_message: Optional[str] = None) 
     if system_message is not None:
         context_parts.append(system_message)
 
-    if not agent.skip_context_files:
+    if not agent.skip_context_files and not getattr(agent, "_minimal_system_prompt", False):
         # Prefer the configured TERMINAL_CWD (gateway mode). When unset (local
         # CLI), None lets build_context_files_prompt fall back to the launch
         # dir — the user's real cwd there, but the install dir for the gateway
