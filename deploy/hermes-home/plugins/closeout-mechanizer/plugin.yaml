@@ -1,0 +1,9 @@
+name: closeout-mechanizer
+version: "1.0.0"
+description: "Co gioi hoa: 'Done' -> chay closeout_v2 o tang gateway (bo qua LLM); chan bao cao hoan thanh khong co bang chung tool (ground truth)."
+author: "Taadaa Farm Architecture"
+hooks:
+  - pre_gateway_dispatch
+  - pre_llm_call
+  - post_tool_call
+  - transform_llm_output

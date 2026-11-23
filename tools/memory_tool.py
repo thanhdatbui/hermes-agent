@@ -871,8 +871,8 @@ def _apply_write_gate(action: str, target: str, content: Optional[str],
         origin=wa.current_origin(),
     )
     return json.dumps(
-        {"success": True, "staged": True, "pending_id": record["id"],
-         "message": decision.message},
+        {"success": True, "staged": True, "saved": False, "status": "PENDING_NOT_SAVED",
+         "pending_id": record["id"], "message": decision.message},
         ensure_ascii=False,
     )
 
@@ -918,8 +918,8 @@ def _apply_batch_write_gate(target: str, operations: List[Dict[str, Any]]) -> Op
         origin=wa.current_origin(),
     )
     return json.dumps(
-        {"success": True, "staged": True, "pending_id": record["id"],
-         "message": decision.message},
+        {"success": True, "staged": True, "saved": False, "status": "PENDING_NOT_SAVED",
+         "pending_id": record["id"], "message": decision.message},
         ensure_ascii=False,
     )
 

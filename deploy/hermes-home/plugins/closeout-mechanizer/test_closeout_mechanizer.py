@@ -1,0 +1,77 @@
+import asyncio
+import importlib.util
+import json
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+_spec = importlib.util.spec_from_file_location("cm", Path(__file__).parent / "__init__.py")
+cm = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(cm)
+
+
+def test_done_signal_variants():
+    for t in ("Done", "done.", " XONG ", "xong!", "Chốt phiên"):
+        assert cm.is_done_signal(t), t
+    for t in ("done with the first part, continue", "chưa xong", ""):
+        assert not cm.is_done_signal(t), t
+
+
+def test_classify_staged_blocked_failed_ok():
+    staged = json.dumps({"success": True, "staged": True, "pending_id": "2f610d81"})
+    assert cm.classify_result(staged) == "STAGED"
+    assert cm.classify_result({"action": "block"}) == "BLOCKED"
+    assert cm.classify_result(json.dumps({"success": False, "error": "x"})) == "FAILED"
+    assert cm.classify_result(json.dumps({"exit_code": 1})) == "FAILED"
+    assert cm.classify_result(json.dumps({"success": True})) == "OK"
+
+
+def test_claim_after_staged_is_replaced():
+    r = [{"tool": "patch", "status": "BLOCKED"}, {"tool": "memory", "status": "STAGED"}]
+    out = cm.validate_claim("Đã cơ giới hóa xong, đã đưa vào Memory", r)
+    assert out and "UNPROVEN_STAGED" in out
+
+
+def test_claim_without_any_tool_is_replaced():
+    out = cm.validate_claim("Đã xong.", [])
+    assert out and "NO_RECEIPT" in out
+
+
+def test_claim_with_ok_mutating_tool_passes():
+    assert cm.validate_claim("Đã sửa xong", [{"tool": "patch", "status": "OK"}]) is None
+
+
+def test_non_claim_text_passes():
+    assert cm.validate_claim("Đang kiểm tra log.", []) is None
+
+
+def test_gateway_hook_skips_and_replies(monkeypatch):
+    monkeypatch.setattr(cm, "run_closeout", lambda repos=None: "VERDICT")
+    adapter = SimpleNamespace(send=AsyncMock())
+    gw = SimpleNamespace(_adapter_for_source=lambda s: adapter)
+    ev = SimpleNamespace(text="Done", source=SimpleNamespace(chat_id="c1"))
+
+    async def run():
+        res = cm._on_pre_gateway_dispatch(event=ev, gateway=gw)
+        await asyncio.sleep(0.2)
+        return res
+
+    res = asyncio.run(run())
+    assert res["action"] == "skip"
+    adapter.send.assert_awaited_once_with("c1", "VERDICT")
+
+
+def test_transform_is_log_only_by_default(monkeypatch):
+    monkeypatch.delenv("CLOSEOUT_MECH_ENFORCE", raising=False)
+    assert cm._on_transform_llm_output("Đã xong.", session_id="s_log") is None
+
+
+def test_transform_enforces_when_flag_set(monkeypatch):
+    monkeypatch.setenv("CLOSEOUT_MECH_ENFORCE", "1")
+    out = cm._on_transform_llm_output("Đã xong.", session_id="s_enf")
+    assert out and "NO_RECEIPT" in out
+
+
+def test_gateway_hook_ignores_normal_text():
+    ev = SimpleNamespace(text="sửa file giúp tao", source=None)
+    assert cm._on_pre_gateway_dispatch(event=ev, gateway=None) is None
