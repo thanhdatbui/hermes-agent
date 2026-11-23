@@ -10,6 +10,7 @@ cm = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(cm)
 
 
+# Step 1: Done trigger matching
 def test_done_signal_variants():
     for t in ("Done", "done.", " XONG ", "xong!", "Chốt phiên"):
         assert cm.is_done_signal(t), t
@@ -26,6 +27,7 @@ def test_classify_staged_blocked_failed_ok():
     assert cm.classify_result(json.dumps({"success": True})) == "OK"
 
 
+# Step 2: claim validator vs tool receipts
 def test_claim_after_staged_is_replaced():
     r = [{"tool": "patch", "status": "BLOCKED"}, {"tool": "memory", "status": "STAGED"}]
     out = cm.validate_claim("Đã cơ giới hóa xong, đã đưa vào Memory", r)
@@ -45,6 +47,7 @@ def test_non_claim_text_passes():
     assert cm.validate_claim("Đang kiểm tra log.", []) is None
 
 
+# Step 3: gateway dispatch hook
 def test_gateway_hook_skips_and_replies(monkeypatch):
     monkeypatch.setattr(cm, "run_closeout", lambda repos=None: "VERDICT")
     adapter = SimpleNamespace(send=AsyncMock())

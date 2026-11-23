@@ -75,6 +75,7 @@ def classify_result(result: Any) -> str:
     return "OK"
 
 
+# Step 1: run the deterministic closeout gate per repo (code, not LLM)
 def run_closeout(repos: Optional[List[str]] = None) -> str:
     """Run the deterministic gate on each repo; return a verbatim verdict table."""
     rows, any_fail = [], False
@@ -110,6 +111,7 @@ async def _closeout_and_reply(gateway: Any, event: Any) -> None:
         await adapter.send(event.source.chat_id, text)
 
 
+# Step 2: intercept bare Done at the gateway and skip the LLM
 def _on_pre_gateway_dispatch(event: Any = None, gateway: Any = None, **_: Any):
     try:
         if event is None or not is_done_signal(getattr(event, "text", "") or ""):
@@ -128,6 +130,7 @@ def _on_pre_llm_call(session_id: str = "", **_: Any):
     return None
 
 
+# Step 3: record per-turn tool ground truth
 def _on_post_tool_call(tool_name: str = "", result: Any = None, session_id: str = "", **_: Any):
     try:
         with _lock:
@@ -139,6 +142,7 @@ def _on_post_tool_call(tool_name: str = "", result: Any = None, session_id: str 
     return None
 
 
+# Step 4: reject completion claims without successful tool receipts
 def validate_claim(response_text: str, receipts: List[Dict[str, Any]]) -> Optional[str]:
     """Return a replacement text when a completion claim lacks ground truth."""
     if not response_text or not _CLAIM_RE.search(response_text):
