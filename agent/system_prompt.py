@@ -448,7 +448,7 @@ def build_system_prompt_parts(agent: Any, system_message: Optional[str] = None) 
         stable_parts.append(_effective_hint)
 
     if getattr(agent, "_minimal_system_prompt", False):
-        stable_parts = [skills_prompt] if skills_prompt else []
+        stable_parts = []
 
     # ── Context tier (cwd-dependent, may change between sessions) ─
     context_parts: List[str] = []

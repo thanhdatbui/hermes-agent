@@ -1061,7 +1061,7 @@ DEFAULT_CONFIG = {
         # Strip every built-in boilerplate block (identity, task-completion,
         # parallel-call, tool-use enforcement, model-specific directives,
         # steering note, computer-use, environment/profile/platform hints) from
-        # the system prompt. Only the skills index, memory blocks, the
+        # the system prompt. Only memory blocks, the
         # configured agent.system_prompt and the date line remain.
         "minimal_system_prompt": False,
         # Embedder-supplied environment description appended to the system
