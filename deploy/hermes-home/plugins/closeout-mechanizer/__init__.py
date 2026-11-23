@@ -17,6 +17,7 @@ import subprocess
 import sys
 import threading
 import unicodedata
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,39 @@ def classify_result(result: Any) -> str:
     return "OK"
 
 
+def _git(repo: str, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", "-C", repo, *args], capture_output=True, text=True, timeout=60,
+        encoding="utf-8", errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+
+
+def dirty_count(repo: str) -> int:
+    try:
+        return len([l for l in _git(repo, "status", "--porcelain", "-uno").stdout.splitlines() if l.strip()])
+    except Exception:
+        return -1
+
+
+# Step 0: push already-committed work only; never commit (dirty files may belong to others)
+def push_if_ahead(repo: str) -> str:
+    try:
+        ahead = _git(repo, "rev-list", "--count", "@{u}..HEAD")
+        if ahead.returncode != 0:
+            return "PUSH_SKIPPED_NO_UPSTREAM"
+        if int(ahead.stdout.strip() or 0) == 0:
+            return "NOTHING_TO_PUSH"
+        branch = _git(repo, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+        sys.path.insert(0, str(Path(CLOSEOUT_SCRIPT).parent))
+        from safe_push import safe_push
+        res = safe_push(repo, "origin", branch, timeout=120)
+        if res.returncode != 0:
+            return f"PUSH_FAILED:rc={res.returncode}"
+        return f"PUSHED:origin/{branch}"
+    except Exception as exc:
+        return f"PUSH_FAILED:{type(exc).__name__}"
+
+
 # Step 1: run the deterministic closeout gate per repo (code, not LLM)
 def run_closeout(repos: Optional[List[str]] = None) -> str:
     """Run the deterministic gate on each repo; return a verbatim verdict table."""
@@ -93,13 +127,14 @@ def run_closeout(repos: Optional[List[str]] = None) -> str:
                     break
                 except Exception:
                     continue
-            rows.append((repo, verdict, p.returncode))
-            any_fail |= p.returncode != 0
+            push = push_if_ahead(repo) if p.returncode == 0 else "SKIPPED_GATE_NOT_APPROVED"
+            rows.append((repo, verdict, p.returncode, push, dirty_count(repo)))
+            any_fail |= p.returncode != 0 or push.startswith("PUSH_FAILED")
         except Exception as exc:
-            rows.append((repo, f"ERROR:{type(exc).__name__}", -1))
+            rows.append((repo, f"ERROR:{type(exc).__name__}", -1, "SKIPPED", -1))
             any_fail = True
-    lines = ["CLOSEOUT GATE (chay bang code, khong qua LLM)", "repo | verdict | exit"]
-    lines += [f"{r} | {v} | {rc}" for r, v, rc in rows]
+    lines = ["CLOSEOUT GATE (chay bang code, khong qua LLM)", "repo | verdict | exit | push | file_dirty_chua_commit"]
+    lines += [f"{r} | {v} | {rc} | {ps} | {d}" for r, v, rc, ps, d in rows]
     lines.append("TONG: " + ("REJECTED - co repo khong dat" if any_fail else "APPROVED"))
     return "\n".join(lines)
 

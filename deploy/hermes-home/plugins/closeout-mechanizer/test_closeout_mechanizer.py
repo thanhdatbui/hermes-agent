@@ -47,6 +47,22 @@ def test_non_claim_text_passes():
     assert cm.validate_claim("Đang kiểm tra log.", []) is None
 
 
+# Step 2b: push only after APPROVED, never commit
+def test_run_closeout_pushes_only_when_approved(monkeypatch):
+    pushed = []
+    monkeypatch.setattr(cm, "push_if_ahead", lambda r: pushed.append(r) or "PUSHED:origin/main")
+    monkeypatch.setattr(cm, "dirty_count", lambda r: 2)
+
+    def fake_run(cmd, **kw):
+        rc = 0 if "good" in cmd else 1
+        return SimpleNamespace(returncode=rc, stdout='{"verdict": "X"}')
+
+    monkeypatch.setattr(cm.subprocess, "run", fake_run)
+    out = cm.run_closeout(["good", "bad"])
+    assert pushed == ["good"]
+    assert "SKIPPED_GATE_NOT_APPROVED" in out and "PUSHED:origin/main" in out and "REJECTED" in out
+
+
 # Step 3: gateway dispatch hook
 def test_gateway_hook_skips_and_replies(monkeypatch):
     monkeypatch.setattr(cm, "run_closeout", lambda repos=None: "VERDICT")
