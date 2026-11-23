@@ -1058,6 +1058,12 @@ DEFAULT_CONFIG = {
         # (docker/modal/ssh — they have their own probe).  Set False to
         # disable entirely.
         "environment_probe": True,
+        # Strip every built-in boilerplate block (identity, task-completion,
+        # parallel-call, tool-use enforcement, model-specific directives,
+        # steering note, computer-use, environment/profile/platform hints) from
+        # the system prompt. Only the skills index, memory blocks, the
+        # configured agent.system_prompt and the date line remain.
+        "minimal_system_prompt": False,
         # Embedder-supplied environment description appended to the system
         # prompt's environment-hints block. Lets a host that wraps Hermes
         # (sandbox runner, managed platform) explain the runtime environment

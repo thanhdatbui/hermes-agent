@@ -345,7 +345,7 @@ def build_system_prompt_parts(agent: Any, system_message: Optional[str] = None) 
     # git/workspace snapshot are built once here and cached for the session;
     # the snapshot is never re-probed per turn (that would break the prompt
     # cache), so the brief tells the model to re-check git before relying on it.
-    if agent.valid_tool_names:
+    if agent.valid_tool_names and not getattr(agent, "_minimal_system_prompt", False):
         try:
             from agent.coding_context import coding_system_blocks
 
@@ -446,6 +446,9 @@ def build_system_prompt_parts(agent: Any, system_message: Optional[str] = None) 
         _effective_hint = _tui_embedded_pane_clarifier(_effective_hint)
     if _effective_hint:
         stable_parts.append(_effective_hint)
+
+    if getattr(agent, "_minimal_system_prompt", False):
+        stable_parts = [skills_prompt] if skills_prompt else []
 
     # ── Context tier (cwd-dependent, may change between sessions) ─
     context_parts: List[str] = []

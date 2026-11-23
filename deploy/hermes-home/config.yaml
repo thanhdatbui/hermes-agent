@@ -45,6 +45,7 @@ fallback_providers:
 - model: ag-gemini-pool-3
   provider: omni
 agent:
+  minimal_system_prompt: true
   max_turns: 100
   gateway_timeout: 3600
   api_max_retries: 5
