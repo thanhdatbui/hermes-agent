@@ -820,6 +820,31 @@ def build_api_kwargs(agent, api_messages: list) -> dict:
     """Build the keyword arguments dict for the active API mode."""
     tools_for_api = agent.tools
 
+    if getattr(agent, "_minimal_system_prompt", False):
+        import re as _re
+
+        def _scrub(text):
+            return _re.sub(r"\bHermes(?: Agent)?\b", "the agent", text)
+
+        def _scrub_tree(node):
+            if isinstance(node, dict):
+                return {
+                    k: (_scrub(v) if k == "description" and isinstance(v, str) else _scrub_tree(v))
+                    for k, v in node.items()
+                }
+            if isinstance(node, list):
+                return [_scrub_tree(v) for v in node]
+            return node
+
+        if tools_for_api:
+            tools_for_api = _scrub_tree(tools_for_api)
+        api_messages = [
+            {**m, "content": _scrub(m["content"])}
+            if m.get("role") == "system" and isinstance(m.get("content"), str)
+            else m
+            for m in api_messages
+        ]
+
     if agent.api_mode == "anthropic_messages":
         _transport = agent._get_transport()
         anthropic_messages = agent._prepare_anthropic_messages_for_api(api_messages)
