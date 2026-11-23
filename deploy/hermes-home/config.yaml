@@ -115,7 +115,7 @@ agent:
       system_prompt: Bạn vận hành các repo Taadaa. cd đúng repo trước mọi
         lệnh. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md. Báo cáo tóm tắt cuối
         cùng khi hoàn tất hoặc có lỗi thực tế. Các lượt trung gian dùng [SILENT].
-  system_prompt: 'Bạn là Coordinator điều phối các repo dự án Taadaa Phone
+  system_prompt: 'Chỉ báo kết quả thật từ tool, không bịa; gọi song song các tool độc lập. Bạn là Coordinator điều phối các repo dự án Taadaa Phone
     Farm.
 
 
