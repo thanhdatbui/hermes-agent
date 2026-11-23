@@ -820,6 +820,7 @@ def build_api_kwargs(agent, api_messages: list) -> dict:
     """Build the keyword arguments dict for the active API mode."""
     tools_for_api = agent.tools
 
+    # Step 1: minimal mode - scrub "Hermes" from tool descriptions and system messages
     if getattr(agent, "_minimal_system_prompt", False):
         import re as _re
 
