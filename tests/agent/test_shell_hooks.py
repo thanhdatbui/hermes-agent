@@ -147,6 +147,35 @@ class TestParseResponse:
         )
         assert r == {"action": "block", "message": shell_hooks._DEFAULT_BLOCK_MESSAGE}
 
+    def test_block_folds_guidance_and_required_action(self):
+        r = shell_hooks._parse_response(
+            "pre_tool_call",
+            '{"action": "block", "message": "blocked", "rule_id": "R1", '
+            '"guidance": "why", "required_action": {"instruction": "do X", "command": "run Y"}}',
+        )
+        msg = r["message"]
+        assert msg.startswith("blocked\n")
+        assert "HƯỚNG DẪN: why" in msg
+        assert "CHỈ DẪN: do X" in msg
+        assert "LỆNH GỢI Ý: run Y" in msg
+        assert "R1" in msg
+
+    def test_block_does_not_duplicate_preformatted_guidance(self):
+        raw = '[R1] bad\nHƯỚNG DẪN: why\nCHỈ DẪN: do X'
+        import json as _j
+        r = shell_hooks._parse_response(
+            "pre_tool_call",
+            _j.dumps({"action": "block", "message": raw, "rule_id": "R1",
+                      "guidance": "why", "required_action": {"instruction": "do X"}}),
+        )
+        assert r == {"action": "block", "message": raw}
+
+    def test_block_decision_style_also_folds_guidance(self):
+        r = shell_hooks._parse_response(
+            "pre_tool_call", '{"decision": "block", "reason": "no", "guidance": "g"}',
+        )
+        assert r["message"] == "no\nHƯỚNG DẪN: g"
+
 
 # ── _serialize_payload ────────────────────────────────────────────────────
 

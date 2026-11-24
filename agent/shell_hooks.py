@@ -573,6 +573,33 @@ def _block_message(primary: Any, secondary: Any) -> str:
     return raw if isinstance(raw, str) and raw else _DEFAULT_BLOCK_MESSAGE
 
 
+def _append_guidance(message: str, data: Dict[str, Any]) -> str:
+    """Fold structured guidance fields into a block message for the LLM.
+
+    Hooks may return ``guidance`` / ``required_action`` as separate fields;
+    without this they would be dropped. Skips parts already present in the
+    message so hooks that pre-format their own message are not duplicated.
+    """
+    parts = []
+    guidance = data.get("guidance")
+    if isinstance(guidance, str) and guidance.strip() and guidance.strip() not in message:
+        parts.append(f"HƯỚNG DẪN: {guidance.strip()}")
+    action = data.get("required_action")
+    if isinstance(action, dict):
+        instruction = action.get("instruction")
+        if isinstance(instruction, str) and instruction.strip() and instruction.strip() not in message:
+            parts.append(f"CHỈ DẪN: {instruction.strip()}")
+        command = action.get("command")
+        if isinstance(command, str) and command.strip() and command.strip() not in message:
+            parts.append(f"LỆNH GỢI Ý: {command.strip()}")
+    rule_id = data.get("rule_id")
+    if isinstance(rule_id, str) and rule_id and rule_id not in message:
+        parts.append(f"(rule: {rule_id})")
+    if not parts:
+        return message
+    return message + "\n" + "\n".join(parts)
+
+
 def _parse_response(event: str, stdout: str) -> Optional[Dict[str, Any]]:
     """Translate stdout JSON into a Hermes wire-shape dict.
 
@@ -613,9 +640,11 @@ def _parse_response(event: str, stdout: str) -> Optional[Dict[str, Any]]:
                 "notice": data.get("notice") or data.get("message") or "",
             }
         if data.get("action") == "block":
-            return {"action": "block", "message": _block_message(data.get("message"), data.get("reason"))}
+            msg = _block_message(data.get("message"), data.get("reason"))
+            return {"action": "block", "message": _append_guidance(msg, data)}
         if data.get("decision") == "block":
-            return {"action": "block", "message": _block_message(data.get("reason"), data.get("message"))}
+            msg = _block_message(data.get("reason"), data.get("message"))
+            return {"action": "block", "message": _append_guidance(msg, data)}
         return None
 
     if event == "pre_verify":
