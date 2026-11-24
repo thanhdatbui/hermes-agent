@@ -235,36 +235,33 @@ def _session_id_for_event(gateway: Any, event: Any) -> str:
         return ""
 
 
-# Step 1b: fallback when Scope Lock is empty (e.g. after restart): repos with commits since session start
-def infer_repos_from_git(since: Any, root: str = CLOSEOUT_WORKSPACE) -> List[str]:
-    """Fallback when scope was lost (restart): workspace repos with commits since the session started."""
-    if not since:
-        return []
-    stamp = since.isoformat() if hasattr(since, "isoformat") else str(since)
-    out = []
-    for path in _workspace_repos(root).values():
-        try:
-            r = _git(path, "log", f"--since={stamp}", "-1", "--format=%H")
-            if r.returncode == 0 and r.stdout.strip():
-                out.append(path)
-        except Exception:
-            continue
-    return out
+# Step 1b: Scope Lock lost (restart): rebuild from this session's own transcript tool calls, never from git activity of other sessions
+def infer_repos_from_transcript(messages: Any, root: str = CLOSEOUT_WORKSPACE) -> List[str]:
+    found: List[str] = []
+    for m in messages or []:
+        for tc in (m.get("tool_calls") or []) if isinstance(m, dict) else []:
+            fn = tc.get("function") or {}
+            if not _MUTATING_TOOLS.search(str(fn.get("name", ""))):
+                continue
+            for r in repos_in_args(fn.get("arguments"), root=root):
+                if r not in found:
+                    found.append(r)
+    return found
 
 
-def _session_started_at(gateway: Any, session_id: str) -> Any:
+def _session_transcript(gateway: Any, session_id: str) -> Any:
     try:
-        entry = gateway.session_store.lookup_by_session_id(session_id)
-        return getattr(entry, "created_at", None)
+        return gateway.session_store.load_transcript(session_id)
     except Exception:
-        return None
+        return []
 
 
 async def _closeout_and_reply(gateway: Any, event: Any) -> None:
     sid = _session_id_for_event(gateway, event)
     repos = session_repos(sid)
     if not repos:
-        repos = await asyncio.to_thread(infer_repos_from_git, _session_started_at(gateway, sid))
+        repos = infer_repos_from_transcript(await asyncio.to_thread(_session_transcript, gateway, sid))
+        record_scope(sid, repos)
     text = await asyncio.to_thread(run_closeout, repos)
     adapter = gateway._adapter_for_source(event.source)
     if adapter:

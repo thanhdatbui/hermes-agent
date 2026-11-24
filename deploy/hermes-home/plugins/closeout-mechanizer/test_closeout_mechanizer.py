@@ -146,13 +146,14 @@ def test_run_closeout_no_repos_does_not_sweep():
     assert "KHONG_CO_VIEC" in out and "Scope Lock" in out
 
 
-def test_infer_repos_from_git_returns_repos_with_recent_commits(tmp_path, monkeypatch):
-    for n in ("hot", "cold"):
+def test_infer_repos_from_transcript_uses_only_mutating_calls(tmp_path):
+    for n in ("mine", "other"):
         (tmp_path / n / ".git").mkdir(parents=True)
-    monkeypatch.setattr(
-        cm, "_git",
-        lambda repo, *a: SimpleNamespace(returncode=0, stdout="abc" if repo.endswith("hot") else ""),
-    )
-    got = cm.infer_repos_from_git("2026-11-24T00:00:00", root=str(tmp_path))
-    assert [Path(g).name for g in got] == ["hot"]
-    assert cm.infer_repos_from_git(None, root=str(tmp_path)) == []
+    root = str(tmp_path)
+    base = root.replace("\\", "/")
+    msgs = [
+        {"role": "assistant", "tool_calls": [{"function": {"name": "patch", "arguments": '{"path": "%s/mine/a.py"}' % base}}]},
+        {"role": "assistant", "tool_calls": [{"function": {"name": "read_file", "arguments": '{"path": "%s/other/b.py"}' % base}}]},
+    ]
+    got = cm.infer_repos_from_transcript(msgs, root=root)
+    assert [Path(g).name for g in got] == ["mine"]
