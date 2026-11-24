@@ -1,7 +1,7 @@
 """closeout-mechanizer: deterministic 'Done' closeout + completion-claim validator.
 
-1. pre_gateway_dispatch: a bare "Done"/"xong" message never reaches the LLM. The
-   gate runs in code and its verbatim verdict is sent back; the message is skipped.
+1. pre_gateway_dispatch: a bare "Done"/"xong" message is rewritten into a session-report request for the LLM; the
+   gate runs in code and its verbatim verdict table is sent back separately.
 2. post_tool_call records ground truth (ok / staged / blocked / failed) per turn.
 3. transform_llm_output replaces a completion claim that has no successful
    tool receipt in the same turn with a fixed one-line template.
@@ -29,6 +29,13 @@ CLOSEOUT_WORKSPACE = r"D:\Taadaa"
 CLOSEOUT_MAX_REPOS = 8
 CLOSEOUT_WORKERS = 4
 CLOSEOUT_TIMEOUT = 300
+CLOSEOUT_REWRITE_TEXT = (
+    "[Done] User chot phien. Viet bao cao tong ket CA PHIEN theo skill session-close-protocol: "
+    "viec da lam, loi da debug/fix, test da pass (chi neu co tool receipt that), "
+    "cai da verify live vs chi unit test, ton dong. "
+    "Bang CLOSEOUT GATE (verdict/push tung repo) do code gui rieng ngay sau tin nay: "
+    "KHONG tu neu hay doan verdict gate/push, chi tham chieu bang do."
+)
 
 _TRIGGERS = {"done", "xong", "chot phien", "chot phien nhe", "done nhe", "xong roi", "done roi"}
 
@@ -198,7 +205,7 @@ def _on_pre_gateway_dispatch(event: Any = None, gateway: Any = None, **_: Any):
             return None
         loop = asyncio.get_running_loop()
         loop.create_task(_closeout_and_reply(gateway, event))
-        return {"action": "skip", "reason": "closeout-mechanizer: Done handled by code"}
+        return {"action": "rewrite", "text": CLOSEOUT_REWRITE_TEXT}
     except Exception as exc:
         logger.warning("[CLOSEOUT_MECH] dispatch hook failed, falling through: %s", exc)
         return None

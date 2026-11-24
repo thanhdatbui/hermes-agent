@@ -63,8 +63,8 @@ def test_run_closeout_pushes_only_when_approved(monkeypatch):
     assert "SKIPPED_GATE_NOT_APPROVED" in out and "PUSHED:origin/main" in out and "REJECTED" in out
 
 
-# Step 3: gateway dispatch hook
-def test_gateway_hook_skips_and_replies(monkeypatch):
+# Step 3: gateway dispatch hook (rewrite so LLM still writes the session report)
+def test_gateway_hook_rewrites_and_replies(monkeypatch):
     monkeypatch.setattr(cm, "run_closeout", lambda repos=None: "VERDICT")
     adapter = SimpleNamespace(send=AsyncMock())
     gw = SimpleNamespace(_adapter_for_source=lambda s: adapter)
@@ -76,7 +76,7 @@ def test_gateway_hook_skips_and_replies(monkeypatch):
         return res
 
     res = asyncio.run(run())
-    assert res["action"] == "skip"
+    assert res["action"] == "rewrite" and res["text"] == cm.CLOSEOUT_REWRITE_TEXT
     adapter.send.assert_awaited_once_with("c1", "VERDICT", reply_to=None, metadata={})
 
 
@@ -97,7 +97,7 @@ def test_gateway_hook_with_topic_and_reply_to(monkeypatch):
         return res
 
     res = asyncio.run(run())
-    assert res["action"] == "skip"
+    assert res["action"] == "rewrite" and res["text"] == cm.CLOSEOUT_REWRITE_TEXT
     adapter.send.assert_awaited_once_with(
         "c1",
         "VERDICT",
