@@ -77,7 +77,33 @@ def test_gateway_hook_skips_and_replies(monkeypatch):
 
     res = asyncio.run(run())
     assert res["action"] == "skip"
-    adapter.send.assert_awaited_once_with("c1", "VERDICT")
+    adapter.send.assert_awaited_once_with("c1", "VERDICT", reply_to=None, metadata={})
+
+
+# Step 4: gateway dispatch hook with topic and reply_to
+def test_gateway_hook_with_topic_and_reply_to(monkeypatch):
+    monkeypatch.setattr(cm, "run_closeout", lambda repos=None: "VERDICT")
+    adapter = SimpleNamespace(send=AsyncMock())
+    gw = SimpleNamespace(_adapter_for_source=lambda s: adapter)
+    ev = SimpleNamespace(
+        text="Done",
+        message_id="m123",
+        source=SimpleNamespace(chat_id="c1", thread_id="t456"),
+    )
+
+    async def run():
+        res = cm._on_pre_gateway_dispatch(event=ev, gateway=gw)
+        await asyncio.sleep(0.2)
+        return res
+
+    res = asyncio.run(run())
+    assert res["action"] == "skip"
+    adapter.send.assert_awaited_once_with(
+        "c1",
+        "VERDICT",
+        reply_to="m123",
+        metadata={"thread_id": "t456"},
+    )
 
 
 def test_transform_is_log_only_by_default(monkeypatch):

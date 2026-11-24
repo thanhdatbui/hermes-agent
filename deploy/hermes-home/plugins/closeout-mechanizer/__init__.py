@@ -114,6 +114,7 @@ def run_closeout(repos: Optional[List[str]] = None) -> str:
     """Run the deterministic gate on each repo; return a verbatim verdict table."""
     rows, any_fail = [], False
     for repo in repos or CLOSEOUT_REPOS:
+        repo_norm = str(repo).replace("\\", "/")
         try:
             p = subprocess.run(
                 [sys.executable, CLOSEOUT_SCRIPT, "--repo", repo, "--json-output"],
@@ -128,10 +129,10 @@ def run_closeout(repos: Optional[List[str]] = None) -> str:
                 except Exception:
                     continue
             push = push_if_ahead(repo) if p.returncode == 0 else "SKIPPED_GATE_NOT_APPROVED"
-            rows.append((repo, verdict, p.returncode, push, dirty_count(repo)))
+            rows.append((repo_norm, verdict, p.returncode, push, dirty_count(repo)))
             any_fail |= p.returncode != 0 or push.startswith("PUSH_FAILED")
         except Exception as exc:
-            rows.append((repo, f"ERROR:{type(exc).__name__}", -1, "SKIPPED", -1))
+            rows.append((repo_norm, f"ERROR:{type(exc).__name__}", -1, "SKIPPED", -1))
             any_fail = True
     lines = ["CLOSEOUT GATE (chay bang code, khong qua LLM)", "repo | verdict | exit | push | file_dirty_chua_commit"]
     lines += [f"{r} | {v} | {rc} | {ps} | {d}" for r, v, rc, ps, d in rows]
@@ -143,7 +144,14 @@ async def _closeout_and_reply(gateway: Any, event: Any) -> None:
     text = await asyncio.to_thread(run_closeout)
     adapter = gateway._adapter_for_source(event.source)
     if adapter:
-        await adapter.send(event.source.chat_id, text)
+        thread_id = getattr(event.source, "thread_id", None)
+        metadata = {"thread_id": thread_id} if thread_id is not None else {}
+        await adapter.send(
+            event.source.chat_id,
+            text,
+            reply_to=getattr(event, "message_id", None),
+            metadata=metadata,
+        )
 
 
 # Step 2: intercept bare Done at the gateway and skip the LLM
