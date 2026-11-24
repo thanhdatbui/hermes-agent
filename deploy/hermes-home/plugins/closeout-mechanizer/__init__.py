@@ -235,6 +235,7 @@ def _session_id_for_event(gateway: Any, event: Any) -> str:
         return ""
 
 
+# Step 1b: fallback when Scope Lock is empty (e.g. after restart): repos with commits since session start
 def infer_repos_from_git(since: Any, root: str = CLOSEOUT_WORKSPACE) -> List[str]:
     """Fallback when scope was lost (restart): workspace repos with commits since the session started."""
     if not since:
