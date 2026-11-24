@@ -1344,6 +1344,12 @@ def handle_function_call(
         except Exception as _hook_err:
             logger.debug("transform_tool_result hook error: %s", _hook_err)
 
+        try:
+            from hermes_cli.plugins import attach_rewrite_notice, pop_rewrite_notice
+            result = attach_rewrite_notice(result, pop_rewrite_notice(tool_call_id or ""))
+        except Exception as _notice_err:
+            logger.debug("rewrite notice attach error: %s", _notice_err)
+
         return result
 
     except Exception as e:

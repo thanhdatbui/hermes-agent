@@ -1,5 +1,6 @@
 """Tests for the Hermes plugin system (hermes_cli.plugins)."""
 
+import json
 import logging
 import sys
 import types
@@ -2366,3 +2367,24 @@ class TestDispatchToolWithoutCliRef:
             assert calls[0][1].get("parent_agent") is None
         finally:
             registry.deregister("_test_dispatch_probe")
+
+
+class TestRewriteNotice:
+    def test_attach_json_dict(self):
+        from hermes_cli.plugins import attach_rewrite_notice
+        out = attach_rewrite_notice('{"ok": true}', "clamped")
+        assert json.loads(out) == {"ok": True, "hook_notice": "clamped"}
+
+    def test_attach_plain_text(self):
+        from hermes_cli.plugins import attach_rewrite_notice
+        assert attach_rewrite_notice("hello", "n") == "[hook_notice] n\nhello"
+
+    def test_attach_noop_without_notice(self):
+        from hermes_cli.plugins import attach_rewrite_notice
+        assert attach_rewrite_notice("x", None) == "x"
+
+    def test_pop_clears(self):
+        from hermes_cli import plugins
+        plugins._REWRITE_NOTICES["tc1"] = "n"
+        assert plugins.pop_rewrite_notice("tc1") == "n"
+        assert plugins.pop_rewrite_notice("tc1") is None

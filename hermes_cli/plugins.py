@@ -37,6 +37,7 @@ import asyncio
 import importlib.metadata
 import importlib.util
 import inspect
+import json
 import logging
 import os
 import sys
@@ -2232,6 +2233,32 @@ def get_pre_tool_call_block_message(
     return message if directive == "block" else None
 
 
+_REWRITE_NOTICES: Dict[str, str] = {}
+_REWRITE_NOTICES_LOCK = threading.Lock()
+
+
+def pop_rewrite_notice(tool_call_id: str) -> Optional[str]:
+    """Return (and clear) the notice a ``rewrite`` hook left for this tool call."""
+    if not tool_call_id:
+        return None
+    with _REWRITE_NOTICES_LOCK:
+        return _REWRITE_NOTICES.pop(tool_call_id, None)
+
+
+def attach_rewrite_notice(result: Any, notice: Optional[str]) -> Any:
+    """Surface a rewrite notice to the model without breaking JSON results."""
+    if not notice or not isinstance(result, str):
+        return result
+    try:
+        data = json.loads(result)
+    except (ValueError, TypeError):
+        data = None
+    if isinstance(data, dict):
+        data["hook_notice"] = notice
+        return json.dumps(data, ensure_ascii=False)
+    return "[hook_notice] " + notice + chr(10) + result
+
+
 def resolve_pre_tool_block(
     tool_name: str,
     args: Optional[Dict[str, Any]],
@@ -2264,6 +2291,9 @@ def resolve_pre_tool_block(
     if details.action == "rewrite":
         if args is not None and details.updated_args is not None:
             args.update(details.updated_args)
+        if tool_call_id and isinstance(details.message, str) and details.message.strip():
+            with _REWRITE_NOTICES_LOCK:
+                _REWRITE_NOTICES[tool_call_id] = details.message.strip()
         return None
     if details.action == "block":
         return details.message
