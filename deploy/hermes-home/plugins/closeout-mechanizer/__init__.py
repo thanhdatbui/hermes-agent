@@ -17,6 +17,7 @@ import subprocess
 import sys
 import threading
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -26,6 +27,7 @@ CLOSEOUT_SCRIPT = r"D:\Taadaa\tools\closeout_v2.py"
 CLOSEOUT_REPOS = [r"D:\Taadaa\tools", r"D:\Taadaa\AI-Tools"]
 CLOSEOUT_WORKSPACE = r"D:\Taadaa"
 CLOSEOUT_MAX_REPOS = 8
+CLOSEOUT_WORKERS = 4
 CLOSEOUT_TIMEOUT = 300
 
 _TRIGGERS = {"done", "xong", "chot phien", "chot phien nhe", "done nhe", "xong roi", "done roi"}
@@ -139,31 +141,36 @@ def discover_repos(root: str = CLOSEOUT_WORKSPACE, limit: int = CLOSEOUT_MAX_REP
     return repos
 
 
-# Step 1: run the deterministic closeout gate per repo (code, not LLM)
+def _gate_one(repo: str):
+    repo_norm = str(repo).replace("\\", "/")
+    try:
+        p = subprocess.run(
+            [sys.executable, CLOSEOUT_SCRIPT, "--repo", repo, "--json-output"],
+            capture_output=True, text=True, timeout=CLOSEOUT_TIMEOUT, encoding="utf-8", errors="replace",
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        verdict = "UNPARSED"
+        for line in reversed(p.stdout.strip().splitlines()):
+            try:
+                verdict = json.loads(line).get("verdict", "UNPARSED")
+                break
+            except Exception:
+                continue
+        push = push_if_ahead(repo) if p.returncode == 0 else "SKIPPED_GATE_NOT_APPROVED"
+        fail = p.returncode != 0 or push.startswith("PUSH_FAILED")
+        return (repo_norm, verdict, p.returncode, push, dirty_count(repo)), fail
+    except Exception as exc:
+        return (repo_norm, f"ERROR:{type(exc).__name__}", -1, "SKIPPED", -1), True
+
+
+# Step 1: run the deterministic closeout gate per repo in parallel (code, not LLM)
 def run_closeout(repos: Optional[List[str]] = None) -> str:
     """Run the deterministic gate on each repo; return a verbatim verdict table."""
-    rows, any_fail = [], False
-    for repo in repos or discover_repos():
-        repo_norm = str(repo).replace("\\", "/")
-        try:
-            p = subprocess.run(
-                [sys.executable, CLOSEOUT_SCRIPT, "--repo", repo, "--json-output"],
-                capture_output=True, text=True, timeout=CLOSEOUT_TIMEOUT, encoding="utf-8", errors="replace",
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
-            verdict = "UNPARSED"
-            for line in reversed(p.stdout.strip().splitlines()):
-                try:
-                    verdict = json.loads(line).get("verdict", "UNPARSED")
-                    break
-                except Exception:
-                    continue
-            push = push_if_ahead(repo) if p.returncode == 0 else "SKIPPED_GATE_NOT_APPROVED"
-            rows.append((repo_norm, verdict, p.returncode, push, dirty_count(repo)))
-            any_fail |= p.returncode != 0 or push.startswith("PUSH_FAILED")
-        except Exception as exc:
-            rows.append((repo_norm, f"ERROR:{type(exc).__name__}", -1, "SKIPPED", -1))
-            any_fail = True
+    targets = list(repos or discover_repos())
+    with ThreadPoolExecutor(max_workers=CLOSEOUT_WORKERS) as pool:
+        results = list(pool.map(_gate_one, targets))
+    rows = [r for r, _ in results]
+    any_fail = any(f for _, f in results)
     lines = ["CLOSEOUT GATE (chay bang code, khong qua LLM)", "repo | verdict | exit | push | file_dirty_chua_commit"]
     lines += [f"{r} | {v} | {rc} | {ps} | {d}" for r, v, rc, ps, d in rows]
     lines.append("TONG: " + ("REJECTED - co repo khong dat" if any_fail else "APPROVED"))
