@@ -144,3 +144,15 @@ def test_scope_records_only_mutating_tools(tmp_path, monkeypatch):
 def test_run_closeout_no_repos_does_not_sweep():
     out = cm.run_closeout([])
     assert "KHONG_CO_VIEC" in out and "Scope Lock" in out
+
+
+def test_infer_repos_from_git_returns_repos_with_recent_commits(tmp_path, monkeypatch):
+    for n in ("hot", "cold"):
+        (tmp_path / n / ".git").mkdir(parents=True)
+    monkeypatch.setattr(
+        cm, "_git",
+        lambda repo, *a: SimpleNamespace(returncode=0, stdout="abc" if repo.endswith("hot") else ""),
+    )
+    got = cm.infer_repos_from_git("2026-11-24T00:00:00", root=str(tmp_path))
+    assert [Path(g).name for g in got] == ["hot"]
+    assert cm.infer_repos_from_git(None, root=str(tmp_path)) == []

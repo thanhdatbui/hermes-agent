@@ -235,8 +235,35 @@ def _session_id_for_event(gateway: Any, event: Any) -> str:
         return ""
 
 
+def infer_repos_from_git(since: Any, root: str = CLOSEOUT_WORKSPACE) -> List[str]:
+    """Fallback when scope was lost (restart): workspace repos with commits since the session started."""
+    if not since:
+        return []
+    stamp = since.isoformat() if hasattr(since, "isoformat") else str(since)
+    out = []
+    for path in _workspace_repos(root).values():
+        try:
+            r = _git(path, "log", f"--since={stamp}", "-1", "--format=%H")
+            if r.returncode == 0 and r.stdout.strip():
+                out.append(path)
+        except Exception:
+            continue
+    return out
+
+
+def _session_started_at(gateway: Any, session_id: str) -> Any:
+    try:
+        entry = gateway.session_store.lookup_by_session_id(session_id)
+        return getattr(entry, "created_at", None)
+    except Exception:
+        return None
+
+
 async def _closeout_and_reply(gateway: Any, event: Any) -> None:
-    repos = session_repos(_session_id_for_event(gateway, event))
+    sid = _session_id_for_event(gateway, event)
+    repos = session_repos(sid)
+    if not repos:
+        repos = await asyncio.to_thread(infer_repos_from_git, _session_started_at(gateway, sid))
     text = await asyncio.to_thread(run_closeout, repos)
     adapter = gateway._adapter_for_source(event.source)
     if adapter:
