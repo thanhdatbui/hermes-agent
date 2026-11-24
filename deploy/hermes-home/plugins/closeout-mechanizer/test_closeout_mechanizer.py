@@ -120,3 +120,17 @@ def test_transform_enforces_when_flag_set(monkeypatch):
 def test_gateway_hook_ignores_normal_text():
     ev = SimpleNamespace(text="sửa file giúp tao", source=None)
     assert cm._on_pre_gateway_dispatch(event=ev, gateway=None) is None
+
+
+# Step 5: repo discovery picks up extra workspace repos with unpushed/dirty work
+def test_discover_repos_adds_active_workspace_repos(tmp_path, monkeypatch):
+    for name in ("active", "clean", "norepo"):
+        (tmp_path / name).mkdir()
+    (tmp_path / "active" / ".git").mkdir()
+    (tmp_path / "clean" / ".git").mkdir()
+    monkeypatch.setattr(cm, "_ahead_count", lambda r: 1 if r.endswith("active") else 0)
+    monkeypatch.setattr(cm, "dirty_count", lambda r: 0)
+    repos = cm.discover_repos(root=str(tmp_path))
+    assert repos[: len(cm.CLOSEOUT_REPOS)] == cm.CLOSEOUT_REPOS
+    assert str(tmp_path / "active") in repos
+    assert str(tmp_path / "clean") not in repos

@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 CLOSEOUT_SCRIPT = r"D:\Taadaa\tools\closeout_v2.py"
 CLOSEOUT_REPOS = [r"D:\Taadaa\tools", r"D:\Taadaa\AI-Tools"]
+CLOSEOUT_WORKSPACE = r"D:\Taadaa"
+CLOSEOUT_MAX_REPOS = 8
 CLOSEOUT_TIMEOUT = 300
 
 _TRIGGERS = {"done", "xong", "chot phien", "chot phien nhe", "done nhe", "xong roi", "done roi"}
@@ -109,11 +111,39 @@ def push_if_ahead(repo: str) -> str:
         return f"PUSH_FAILED:{type(exc).__name__}"
 
 
+def _ahead_count(repo: str) -> int:
+    try:
+        r = _git(repo, "rev-list", "--count", "@{u}..HEAD")
+        return int(r.stdout.strip() or 0) if r.returncode == 0 else 0
+    except Exception:
+        return 0
+
+
+# Step 0b: repos to check = fixed defaults + any workspace repo with unpushed commits or tracked dirty files
+def discover_repos(root: str = CLOSEOUT_WORKSPACE, limit: int = CLOSEOUT_MAX_REPOS) -> List[str]:
+    repos = list(CLOSEOUT_REPOS)
+    seen = {os.path.normcase(os.path.abspath(r)) for r in repos}
+    try:
+        children = sorted(Path(root).iterdir())
+    except Exception:
+        return repos
+    for child in children:
+        key = os.path.normcase(str(child.resolve()))
+        if key in seen or not (child / ".git").exists():
+            continue
+        if _ahead_count(str(child)) > 0 or dirty_count(str(child)) > 0:
+            repos.append(str(child))
+            seen.add(key)
+        if len(repos) >= limit:
+            break
+    return repos
+
+
 # Step 1: run the deterministic closeout gate per repo (code, not LLM)
 def run_closeout(repos: Optional[List[str]] = None) -> str:
     """Run the deterministic gate on each repo; return a verbatim verdict table."""
     rows, any_fail = [], False
-    for repo in repos or CLOSEOUT_REPOS:
+    for repo in repos or discover_repos():
         repo_norm = str(repo).replace("\\", "/")
         try:
             p = subprocess.run(
