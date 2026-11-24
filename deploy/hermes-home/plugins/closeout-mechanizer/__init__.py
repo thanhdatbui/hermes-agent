@@ -2,7 +2,8 @@
 
 1. pre_gateway_dispatch: a bare "Done"/"xong" message is rewritten into a session-report request for the LLM; the
    gate runs in code and its verbatim verdict table is sent back separately.
-2. post_tool_call records ground truth (ok / staged / blocked / failed) per turn.
+2. post_tool_call records ground truth per turn plus the workspace repos the session mutated
+   (Scope Lock: the gate only checks those repos, never other sessions' WIP).
 3. transform_llm_output replaces a completion claim that has no successful
    tool receipt in the same turn with a fixed one-line template.
 """
@@ -24,9 +25,7 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 CLOSEOUT_SCRIPT = r"D:\Taadaa\tools\closeout_v2.py"
-CLOSEOUT_REPOS = [r"D:\Taadaa\tools", r"D:\Taadaa\AI-Tools"]
 CLOSEOUT_WORKSPACE = r"D:\Taadaa"
-CLOSEOUT_MAX_REPOS = 8
 CLOSEOUT_WORKERS = 4
 CLOSEOUT_TIMEOUT = 300
 CLOSEOUT_REWRITE_TEXT = (
@@ -120,32 +119,70 @@ def push_if_ahead(repo: str) -> str:
         return f"PUSH_FAILED:{type(exc).__name__}"
 
 
-def _ahead_count(repo: str) -> int:
-    try:
-        r = _git(repo, "rev-list", "--count", "@{u}..HEAD")
-        return int(r.stdout.strip() or 0) if r.returncode == 0 else 0
-    except Exception:
-        return 0
+_scope_lock = threading.Lock()
+_session_repos: Dict[str, List[str]] = {}
 
 
-# Step 0b: repos to check = fixed defaults + any workspace repo with unpushed commits or tracked dirty files
-def discover_repos(root: str = CLOSEOUT_WORKSPACE, limit: int = CLOSEOUT_MAX_REPOS) -> List[str]:
-    repos = list(CLOSEOUT_REPOS)
-    seen = {os.path.normcase(os.path.abspath(r)) for r in repos}
+def _state_file() -> Path:
+    home = os.environ.get("HERMES_HOME") or os.path.join(os.environ.get("LOCALAPPDATA", ""), "hermes")
+    return Path(home) / "closeout_session_repos.json"
+
+
+def _load_scope() -> None:
     try:
-        children = sorted(Path(root).iterdir())
+        data = json.loads(_state_file().read_text(encoding="utf-8"))
+        with _scope_lock:
+            for sid, repos in data.items():
+                _session_repos.setdefault(sid, list(repos))
     except Exception:
-        return repos
-    for child in children:
-        key = os.path.normcase(str(child.resolve()))
-        if key in seen or not (child / ".git").exists():
-            continue
-        if _ahead_count(str(child)) > 0 or dirty_count(str(child)) > 0:
-            repos.append(str(child))
-            seen.add(key)
-        if len(repos) >= limit:
-            break
-    return repos
+        pass
+
+
+def _save_scope() -> None:
+    try:
+        with _scope_lock:
+            snap = {k: v for k, v in list(_session_repos.items())[-200:]}
+        _state_file().write_text(json.dumps(snap), encoding="utf-8")
+    except Exception:
+        logger.debug("[CLOSEOUT_MECH] scope save failed", exc_info=True)
+
+
+def _workspace_repos(root: str = CLOSEOUT_WORKSPACE) -> Dict[str, str]:
+    try:
+        return {c.name: str(c) for c in Path(root).iterdir() if (c / ".git").exists()}
+    except Exception:
+        return {}
+
+
+# Scope Lock: repos a session touched = workspace repos named in the args of its mutating tool calls
+def repos_in_args(args: Any, root: str = CLOSEOUT_WORKSPACE) -> List[str]:
+    try:
+        blob = json.dumps(args, ensure_ascii=False, default=str)
+    except Exception:
+        blob = str(args)
+    blob = re.sub(r"/+", "/", blob.replace("\\", "/")).lower()
+    base = re.sub(r"/+", "/", root.replace("\\", "/")).lower().rstrip("/")
+    found = []
+    for name, path in _workspace_repos(root).items():
+        if re.search(re.escape(f"{base}/{name.lower()}") + r"(?![\w\-])", blob):
+            found.append(path)
+    return found
+
+
+def record_scope(session_id: str, repos: List[str]) -> None:
+    if not repos:
+        return
+    with _scope_lock:
+        cur = _session_repos.setdefault(session_id or "", [])
+        new = [r for r in repos if r not in cur]
+        cur.extend(new)
+    if new:
+        _save_scope()
+
+
+def session_repos(session_id: str) -> List[str]:
+    with _scope_lock:
+        return list(_session_repos.get(session_id or "", []))
 
 
 def _gate_one(repo: str):
@@ -173,7 +210,13 @@ def _gate_one(repo: str):
 # Step 1: run the deterministic closeout gate per repo in parallel (code, not LLM)
 def run_closeout(repos: Optional[List[str]] = None) -> str:
     """Run the deterministic gate on each repo; return a verbatim verdict table."""
-    targets = list(repos or discover_repos())
+    targets = list(repos or [])
+    if not targets:
+        return (
+            "CLOSEOUT GATE (chay bang code, khong qua LLM)\n"
+            "Khong co repo nao duoc phien nay sua (Scope Lock) - khong quet repo cua phien khac.\n"
+            "TONG: KHONG_CO_VIEC"
+        )
     with ThreadPoolExecutor(max_workers=CLOSEOUT_WORKERS) as pool:
         results = list(pool.map(_gate_one, targets))
     rows = [r for r, _ in results]
@@ -184,8 +227,17 @@ def run_closeout(repos: Optional[List[str]] = None) -> str:
     return "\n".join(lines)
 
 
+def _session_id_for_event(gateway: Any, event: Any) -> str:
+    try:
+        key = gateway._session_key_for_source(event.source)
+        return gateway.session_store.peek_session_id(key) or ""
+    except Exception:
+        return ""
+
+
 async def _closeout_and_reply(gateway: Any, event: Any) -> None:
-    text = await asyncio.to_thread(run_closeout)
+    repos = session_repos(_session_id_for_event(gateway, event))
+    text = await asyncio.to_thread(run_closeout, repos)
     adapter = gateway._adapter_for_source(event.source)
     if adapter:
         thread_id = getattr(event.source, "thread_id", None)
@@ -218,8 +270,10 @@ def _on_pre_llm_call(session_id: str = "", **_: Any):
 
 
 # Step 3: record per-turn tool ground truth
-def _on_post_tool_call(tool_name: str = "", result: Any = None, session_id: str = "", **_: Any):
+def _on_post_tool_call(tool_name: str = "", result: Any = None, session_id: str = "", args: Any = None, **_: Any):
     try:
+        if _MUTATING_TOOLS.search(tool_name or "") and args:
+            record_scope(session_id, repos_in_args(args))
         with _lock:
             _turn_receipts.setdefault(session_id or "", []).append(
                 {"tool": tool_name, "status": classify_result(result)}
@@ -272,6 +326,7 @@ def _on_transform_llm_output(response_text: str = "", session_id: str = "", **_:
 
 
 def register(ctx: Any) -> None:
+    _load_scope()
     ctx.register_hook("pre_gateway_dispatch", _on_pre_gateway_dispatch)
     ctx.register_hook("pre_llm_call", _on_pre_llm_call)
     ctx.register_hook("post_tool_call", _on_post_tool_call)

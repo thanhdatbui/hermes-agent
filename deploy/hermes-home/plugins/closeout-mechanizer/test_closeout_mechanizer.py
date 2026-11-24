@@ -122,15 +122,25 @@ def test_gateway_hook_ignores_normal_text():
     assert cm._on_pre_gateway_dispatch(event=ev, gateway=None) is None
 
 
-# Step 5: repo discovery picks up extra workspace repos with unpushed/dirty work
-def test_discover_repos_adds_active_workspace_repos(tmp_path, monkeypatch):
-    for name in ("active", "clean", "norepo"):
-        (tmp_path / name).mkdir()
-    (tmp_path / "active" / ".git").mkdir()
-    (tmp_path / "clean" / ".git").mkdir()
-    monkeypatch.setattr(cm, "_ahead_count", lambda r: 1 if r.endswith("active") else 0)
-    monkeypatch.setattr(cm, "dirty_count", lambda r: 0)
-    repos = cm.discover_repos(root=str(tmp_path))
-    assert repos[: len(cm.CLOSEOUT_REPOS)] == cm.CLOSEOUT_REPOS
-    assert str(tmp_path / "active") in repos
-    assert str(tmp_path / "clean") not in repos
+# Step 5: Scope Lock - only repos the session mutated are gated
+def test_repos_in_args_matches_only_named_repos(tmp_path):
+    for n in ("tools", "tiktok-follow", "GPM auto"):
+        (tmp_path / n / ".git").mkdir(parents=True)
+    root = str(tmp_path)
+    args = {"path": root.replace("\\", "/") + "/tools/x.py", "cmd": f'cd "{root}\GPM auto" && ls'}
+    found = cm.repos_in_args(args, root=root)
+    assert sorted(Path(f).name for f in found) == ["GPM auto", "tools"]
+
+
+def test_scope_records_only_mutating_tools(tmp_path, monkeypatch):
+    monkeypatch.setattr(cm, "_save_scope", lambda: None)
+    monkeypatch.setattr(cm, "repos_in_args", lambda a, root=None: ["R1"])
+    cm._on_post_tool_call(tool_name="read_file", result="{}", session_id="sA", args={"p": "x"})
+    assert cm.session_repos("sA") == []
+    cm._on_post_tool_call(tool_name="patch", result="{}", session_id="sA", args={"p": "x"})
+    assert cm.session_repos("sA") == ["R1"]
+
+
+def test_run_closeout_no_repos_does_not_sweep():
+    out = cm.run_closeout([])
+    assert "KHONG_CO_VIEC" in out and "Scope Lock" in out
