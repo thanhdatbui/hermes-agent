@@ -100,21 +100,31 @@ def dirty_count(repo: str) -> int:
         return -1
 
 
-# Step 0: push already-committed work only; never commit (dirty files may belong to others)
+# Step 1: push already-committed work only; never commit (dirty files may belong to others)
 def push_if_ahead(repo: str) -> str:
     try:
+        upstream_res = _git(repo, "rev-parse", "--abbrev-ref", "@{u}")
+        if upstream_res.returncode != 0:
+            return "PUSH_SKIPPED_NO_UPSTREAM"
+        upstream = upstream_res.stdout.strip()
+        if not upstream or "/" not in upstream:
+            return "PUSH_SKIPPED_NO_UPSTREAM"
+        remote = upstream.split("/", 1)[0].strip() or "origin"
+
         ahead = _git(repo, "rev-list", "--count", "@{u}..HEAD")
         if ahead.returncode != 0:
             return "PUSH_SKIPPED_NO_UPSTREAM"
         if int(ahead.stdout.strip() or 0) == 0:
             return "NOTHING_TO_PUSH"
+
         branch = _git(repo, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
         sys.path.insert(0, str(Path(CLOSEOUT_SCRIPT).parent))
         from safe_push import safe_push
-        res = safe_push(repo, "origin", branch, timeout=120)
+
+        res = safe_push(repo, remote, branch, timeout=120)
         if res.returncode != 0:
             return f"PUSH_FAILED:rc={res.returncode}"
-        return f"PUSHED:origin/{branch}"
+        return f"PUSHED:{remote}/{branch}"
     except Exception as exc:
         return f"PUSH_FAILED:{type(exc).__name__}"
 
