@@ -29,7 +29,20 @@ TARGET_PROCESSES = {p.lower() for p in ["grep.exe", "rg.exe", "find.exe", "grep"
 MAX_AGE_ORPHAN = 60
 MAX_AGE_ALIVE = 300
 
+def is_reboot_blackout_window(now_dt=None, now_ts=None) -> bool:
+    """Ne 3 khung gio reboot Farm: 05:05-05:35, 11:05-11:35, 17:05-17:35 va uptime < 15m."""
+    ts = time.time() if now_ts is None else now_ts
+    try:
+        if (ts - psutil.boot_time()) < 900.0:
+            return True
+    except Exception:
+        pass
+    m = (time.localtime(ts).tm_hour * 60 + time.localtime(ts).tm_min) if now_dt is None else (now_dt.hour * 60 + now_dt.minute)
+    return any(h * 60 + 5 <= m <= h * 60 + 35 for h in (5, 11, 17))
+
 def kill_orphaned_scans(dry_run: bool = False):
+    if is_reboot_blackout_window():
+        return
     now = time.time()
     killed_count = 0
 
