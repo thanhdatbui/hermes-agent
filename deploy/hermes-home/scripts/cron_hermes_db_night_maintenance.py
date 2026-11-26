@@ -60,11 +60,17 @@ def main():
         deleted_count = db.prune_sessions(older_than_days=30)
         logger.info(f"Đã xóa thành công {deleted_count} session cũ hơn 30 ngày.")
 
-        logger.info("Bắt đầu chạy SessionDB.vacuum() để thu hồi không gian đĩa...")
-        start_time = time.time()
-        optimized = db.vacuum()
-        duration = time.time() - start_time
-        logger.info(f"Hoàn thành VACUUM trong {duration:.2f} giây (đã optimize {optimized} FTS index).")
+        import shutil
+        free_bytes = shutil.disk_usage(db_path.parent).free
+        if free_bytes < initial_size * 2.5:
+            logger.warning(f"Bỏ qua VACUUM in-place trên C: do dung lượng trống ({free_bytes // (1024*1024)} MB) < 2.5x CSDL.")
+        else:
+            try:
+                start_time = time.time()
+                optimized = db.vacuum()
+                logger.info(f"Hoàn thành VACUUM trong {time.time() - start_time:.2f}s (optimize {optimized} FTS index).")
+            except Exception as ve:
+                logger.warning(f"Bỏ qua VACUUM do lỗi đĩa/khóa: {ve}")
 
         final_size = db_path.stat().st_size
         saved_space = initial_size - final_size
