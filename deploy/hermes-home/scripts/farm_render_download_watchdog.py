@@ -256,23 +256,36 @@ PREV_SNAPSHOT_PATH = r"D:\Taadaa\runtime\kibe\cron-state\farm_render_download_la
 
 
 def fetch_admin_stats_remote():
-    try:
-        cmd = ['ssh', '-o', 'ConnectTimeout=3', 'admin-farm', 'python -c "import sys; sys.path.append(r\'%LOCALAPPDATA%\\hermes\\scripts\'); import farm_render_download_watchdog as f, json; h = f.detect_host(); is_dl = f.is_download_running(); sf, s30, s45, smp4 = f.get_source_video_stats(h); is_rd = f.is_render_running(); tst, trd = f.get_render_stats(h); print(json.dumps({\'name\': h[\'name\'], \'video_goc\': h[\'video_goc\'], \'render_root\': h[\'render_root\'], \'is_dl\': is_dl, \'src_folders\': sf, \'src_ge30\': s30, \'src_ge45\': s45, \'src_mp4\': smp4, \'is_rd\': is_rd, \'tik_stats\': tst, \'total_rendered\': trd}))"']
-        res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=8, creationflags=subprocess.CREATE_NO_WINDOW)
-        if res.returncode == 0:
-            for line in res.stdout.splitlines():
-                line = line.strip()
-                if line.startswith("{") and line.endswith("}"):
-                    data = json.loads(line)
-                    try:
-                        os.makedirs(os.path.dirname(ADMIN_CACHE_PATH), exist_ok=True)
-                        with open(ADMIN_CACHE_PATH, "w", encoding="utf-8") as f:
-                            json.dump(data, f, ensure_ascii=False, indent=2)
-                    except Exception:
-                        pass
-                    return data, "LIVE"
-    except Exception:
-        pass
+    # Bước 1: Thử lần lượt 2 lệnh SSH an toàn cho Windows PowerShell và parse JSON đầu ra hợp lệ
+    ssh_cmds = [
+        ['ssh', '-o', 'ConnectTimeout=5', 'admin-farm', r'cmd /c python %LOCALAPPDATA%\hermes\scripts\farm_render_download_watchdog.py --json'],
+        ['ssh', '-o', 'ConnectTimeout=5', 'admin-farm', r'python C:\Users\Admin\AppData\Local\hermes\scripts\farm_render_download_watchdog.py --json'],
+    ]
+    for cmd in ssh_cmds:
+        try:
+            res = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=15,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            if res.returncode == 0:
+                for line in res.stdout.splitlines():
+                    line = line.strip()
+                    if line.startswith("{") and line.endswith("}"):
+                        data = json.loads(line)
+                        try:
+                            os.makedirs(os.path.dirname(ADMIN_CACHE_PATH), exist_ok=True)
+                            with open(ADMIN_CACHE_PATH, "w", encoding="utf-8") as f:
+                                json.dump(data, f, ensure_ascii=False, indent=2)
+                        except Exception:
+                            pass
+                        return data, "LIVE"
+        except Exception:
+            continue
 
     if os.path.exists(ADMIN_CACHE_PATH):
         try:
