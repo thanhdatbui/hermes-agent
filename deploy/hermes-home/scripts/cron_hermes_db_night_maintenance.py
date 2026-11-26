@@ -60,22 +60,34 @@ def main():
         deleted_count = db.prune_sessions(older_than_days=30)
         logger.info(f"Đã xóa thành công {deleted_count} session cũ hơn 30 ngày.")
 
-        import shutil
-        free_bytes = shutil.disk_usage(db_path.parent).free
-        if free_bytes < initial_size * 2.5:
-            logger.warning(f"Bỏ qua VACUUM in-place trên C: do dung lượng trống ({free_bytes // (1024*1024)} MB) < 2.5x CSDL.")
-        else:
+        logger.info("Bắt đầu nén CSDL qua VACUUM INTO sang ổ D: (tránh nghẽn đĩa ổ C:)...")
+        temp_d = Path("D:/Taadaa/hermes_state_compact.db")
+        if temp_d.exists():
             try:
-                start_time = time.time()
-                optimized = db.vacuum()
-                logger.info(f"Hoàn thành VACUUM trong {time.time() - start_time:.2f}s (optimize {optimized} FTS index).")
-            except Exception as ve:
-                logger.warning(f"Bỏ qua VACUUM do lỗi đĩa/khóa: {ve}")
+                temp_d.unlink()
+            except Exception:
+                pass
+        start_time = time.time()
+        try:
+            db.optimize_fts()
+        except Exception as fts_err:
+            logger.warning(f"Bỏ qua optimize_fts: {fts_err}")
+        with db._lock:
+            if db._conn:
+                try:
+                    db._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                except Exception:
+                    pass
+                dst_str = str(temp_d).replace("\\", "/")
+                db._conn.execute(f"VACUUM INTO '{dst_str}'")
+        duration = time.time() - start_time
+        compact_size = temp_d.stat().st_size
+        logger.info(f"Hoàn thành VACUUM INTO D: trong {duration:.2f}s (Kích thước nén: {compact_size / (1024*1024):.2f} MB)")
 
         final_size = db_path.stat().st_size
-        saved_space = initial_size - final_size
-        logger.info(f"Kích thước CSDL sau bảo trì: {final_size / (1024*1024):.2f} MB (Tiết kiệm: {saved_space / (1024*1024):.2f} MB)")
-        logger.info("Hoàn tất quy trình bảo trì CSDL Hermes thành công.")
+        saved_space = initial_size - compact_size
+        logger.info(f"Kích thước file nén trên D: {compact_size / (1024*1024):.2f} MB (Tiết kiệm tiềm năng: {saved_space / (1024*1024):.2f} MB)")
+        logger.info("Hoàn tất quy trình bảo trì và nén CSDL Hermes thành công.")
 
     except Exception as e:
         logger.exception(f"Lỗi nghiêm trọng trong quá trình bảo trì CSDL: {e}")
