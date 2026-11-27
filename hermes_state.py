@@ -997,7 +997,7 @@ class SessionDB:
     # 'optimize' is a no-op once the index is already merged, so an idle DB
     # pays almost nothing; the cadence is deliberately coarse so the one-off
     # merge cost is amortised far below the checkpoint cadence.
-    _OPTIMIZE_EVERY_N_WRITES = 1000
+    _OPTIMIZE_EVERY_N_WRITES = 10**12  # 27/11: state.db 8.9GB, FTS optimize giu _lock hang phut -> treo gateway Telegram
     # Session imports intentionally use a lower cap than exports: import holds
     # one BEGIN IMMEDIATE transaction, so bounded batches avoid starving live
     # gateway/CLI writers. The dashboard accepts one exported JSON/JSONL file
