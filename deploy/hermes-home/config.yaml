@@ -507,6 +507,7 @@ plugins:
   disabled: []
   enabled:
   - farm-coordinator-guard
+  - closeout-mechanizer
   entries:
     farm-coordinator-guard:
       allow_tool_override: false
