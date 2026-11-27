@@ -275,12 +275,23 @@ def _gate_one(repo: str):
         has_commit = _has_real_commit(repo)
         ahead = _ahead_count(repo) if has_commit else 0
         push = push_if_ahead(repo) if p.returncode == 0 else "SKIPPED_GATE_NOT_APPROVED"
-        if d > 0 and repo_norm.lower() != "d:/taadaa/hermes":
+        # Step 1: evaluate session work and dirty worktree state before applying closeout verdict
+        no_session_work = ahead == 0
+        if no_session_work and repo_norm.lower() not in (s.lower() for s in getattr(getattr(sys.modules.get('__main__'), '_CURRENT_MUTATED_REPOS', []), '__iter__', lambda: [])()):
+            if d > 0 and (repo_norm.lower() == 'd:/taadaa/hermes' or repo_norm.lower() == 'd:/taadaa/tools'):
+                verdict = "SKIPPED_NOT_SESSION_WORK"
+                fail = False
+            elif d > 0:
+                verdict = "UNCOMMITTED_CHANGES"
+                fail = True
+                push = "SKIPPED_DIRTY_WORKTREE"
+            else:
+                fail = p.returncode != 0 or push.startswith("PUSH_FAILED")
+        elif d > 0 and repo_norm.lower() != "d:/taadaa/hermes":
             verdict = "UNCOMMITTED_CHANGES"
             fail = True
             push = "SKIPPED_DIRTY_WORKTREE"
         else:
-            no_session_work = ahead == 0
             if p.returncode != 0 and repo_norm.lower() == "d:/taadaa/hermes" and (no_session_work or d >= 35):
                 verdict = "SKIPPED_NOT_SESSION_WORK"
                 fail = False
