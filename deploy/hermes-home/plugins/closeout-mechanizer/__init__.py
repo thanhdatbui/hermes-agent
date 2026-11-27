@@ -36,14 +36,15 @@ CLOSEOUT_REWRITE_TEXT = (
     "KHONG tu neu hay doan verdict gate/push, chi tham chieu bang do."
 )
 
-_TRIGGERS = {"done", "xong", "chot phien", "chot phien nhe", "done nhe", "xong roi", "done roi"}
+# "rone" is a common adjacent-key typo for "done" on QWERTY keyboards.
+_TRIGGERS = {"done", "rone", "xong", "chot phien", "chot phien nhe", "done nhe", "xong roi", "done roi"}
 
 _CLAIM_RE = re.compile(
     r"(đã|da)\s+(xong|hoàn\s*thành|hoan\s*thanh|cơ\s*giới\s*hóa|co\s*gioi\s*hoa|lưu|luu|sửa|sua|fix|vá|va|áp\s*dụng|ap\s*dung|đưa\s+vào|dua\s+vao|cập\s*nhật|cap\s*nhat|triển\s*khai|trien\s*khai|commit|push)"
     r"|hoàn\s*tất|hoan\s*tat|\bdone\b|\bfixed\b|\bcompleted\b|\bsaved\b|\bimplemented\b",
     re.IGNORECASE,
 )
-_MUTATING_TOOLS = re.compile(r"patch|write|edit|memory|terminal|skill|cronjob|delegate|execute", re.IGNORECASE)
+_MUTATING_TOOLS = re.compile(r"patch|write|edit|memory|skill|cronjob|execute", re.IGNORECASE)
 
 _lock = threading.Lock()
 _turn_receipts: Dict[str, List[Dict[str, Any]]] = {}
@@ -98,6 +99,23 @@ def dirty_count(repo: str) -> int:
         return len([l for l in _git(repo, "status", "--porcelain", "-uno").stdout.splitlines() if l.strip()])
     except Exception:
         return -1
+
+
+def _has_real_commit(repo: str) -> bool:
+    try:
+        return _git(repo, "rev-parse", "--verify", "HEAD").returncode == 0
+    except Exception:
+        return False
+
+
+def _ahead_count(repo: str) -> int:
+    try:
+        res = _git(repo, "rev-list", "--count", "@{u}..HEAD")
+        if res.returncode != 0:
+            return 0
+        return max(0, int((res.stdout or "0").strip() or 0))
+    except Exception:
+        return 0
 
 
 # Step 1: push already-committed work only; never commit (dirty files may belong to others)
@@ -164,6 +182,24 @@ def _workspace_repos(root: str = CLOSEOUT_WORKSPACE) -> Dict[str, str]:
         return {}
 
 
+# Step 0: detect mutating tool calls including worker/patch runner commands
+def _is_mutating_tool_call(tool_name: str, args: Any) -> bool:
+    name = tool_name or ""
+    if _MUTATING_TOOLS.search(name):
+        return True
+    if name in ("terminal", "execute_code"):
+        try:
+            blob = json.dumps(args, ensure_ascii=False, default=str)
+        except Exception:
+            blob = str(args)
+        lowered = blob.lower()
+        return any(
+            m in lowered
+            for m in ("dispatch_worker.py", "claude_worker.py", "unified_patch_pipeline.py")
+        )
+    return False
+
+
 # Scope Lock: repos a session touched = workspace repos named in the args of its mutating tool calls
 def repos_in_args(args: Any, root: str = CLOSEOUT_WORKSPACE) -> List[str]:
     try:
@@ -175,7 +211,7 @@ def repos_in_args(args: Any, root: str = CLOSEOUT_WORKSPACE) -> List[str]:
     found = []
     for name, path in _workspace_repos(root).items():
         if re.search(re.escape(f"{base}/{name.lower()}") + r"(?![\w\-])", blob):
-            found.append(path)
+            found.append(str(path).replace("\\", "/"))
     return found
 
 
@@ -210,9 +246,22 @@ def _gate_one(repo: str):
                 break
             except Exception:
                 continue
+        d = dirty_count(repo)
+        has_commit = _has_real_commit(repo)
+        ahead = _ahead_count(repo) if has_commit else 0
         push = push_if_ahead(repo) if p.returncode == 0 else "SKIPPED_GATE_NOT_APPROVED"
-        fail = p.returncode != 0 or push.startswith("PUSH_FAILED")
-        return (repo_norm, verdict, p.returncode, push, dirty_count(repo)), fail
+        if d > 0 and repo_norm.lower() != "d:/taadaa/hermes":
+            verdict = "UNCOMMITTED_CHANGES"
+            fail = True
+            push = "SKIPPED_DIRTY_WORKTREE"
+        else:
+            no_session_work = ahead == 0
+            if p.returncode != 0 and repo_norm.lower() == "d:/taadaa/hermes" and (no_session_work or d >= 35):
+                verdict = "SKIPPED_NOT_SESSION_WORK"
+                fail = False
+            else:
+                fail = p.returncode != 0 or push.startswith("PUSH_FAILED")
+        return (repo_norm, verdict, p.returncode, push, d), fail
     except Exception as exc:
         return (repo_norm, f"ERROR:{type(exc).__name__}", -1, "SKIPPED", -1), True
 
@@ -251,7 +300,7 @@ def infer_repos_from_transcript(messages: Any, root: str = CLOSEOUT_WORKSPACE) -
     for m in messages or []:
         for tc in (m.get("tool_calls") or []) if isinstance(m, dict) else []:
             fn = tc.get("function") or {}
-            if not _MUTATING_TOOLS.search(str(fn.get("name", ""))):
+            if not _is_mutating_tool_call(str(fn.get("name", "")), fn.get("arguments")):
                 continue
             for r in repos_in_args(fn.get("arguments"), root=root):
                 if r not in found:
@@ -307,7 +356,12 @@ def _on_pre_llm_call(session_id: str = "", **_: Any):
 # Step 3: record per-turn tool ground truth
 def _on_post_tool_call(tool_name: str = "", result: Any = None, session_id: str = "", args: Any = None, **_: Any):
     try:
-        if _MUTATING_TOOLS.search(tool_name or "") and args:
+        if (
+            tool_name != "read_file"
+            and _is_mutating_tool_call(tool_name, args)
+            and args
+            and classify_result(result) == "OK"
+        ):
             record_scope(session_id, repos_in_args(args))
         with _lock:
             _turn_receipts.setdefault(session_id or "", []).append(

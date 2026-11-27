@@ -12,10 +12,26 @@ _spec.loader.exec_module(cm)
 
 # Step 1: Done trigger matching
 def test_done_signal_variants():
-    for t in ("Done", "done.", " XONG ", "xong!", "Chốt phiên"):
+    for t in ("Done", "done.", "rone", "RONE", " XONG ", "xong!", "Chốt phiên"):
         assert cm.is_done_signal(t), t
     for t in ("done with the first part, continue", "chưa xong", ""):
         assert not cm.is_done_signal(t), t
+
+
+def test_rone_triggers_closeout(monkeypatch):
+    monkeypatch.setattr(cm, "run_closeout", lambda repos=None: "VERDICT")
+    adapter = SimpleNamespace(send=AsyncMock())
+    gw = SimpleNamespace(_adapter_for_source=lambda s: adapter)
+    ev = SimpleNamespace(text="rone", source=SimpleNamespace(chat_id="c1"))
+
+    async def run():
+        res = cm._on_pre_gateway_dispatch(event=ev, gateway=gw)
+        await asyncio.sleep(0.2)
+        return res
+
+    res = asyncio.run(run())
+    assert res["action"] == "rewrite" and res["text"] == cm.CLOSEOUT_REWRITE_TEXT
+    adapter.send.assert_awaited_once_with("c1", "VERDICT", reply_to=None, metadata={})
 
 
 def test_classify_staged_blocked_failed_ok():
@@ -51,7 +67,7 @@ def test_non_claim_text_passes():
 def test_run_closeout_pushes_only_when_approved(monkeypatch):
     pushed = []
     monkeypatch.setattr(cm, "push_if_ahead", lambda r: pushed.append(r) or "PUSHED:origin/main")
-    monkeypatch.setattr(cm, "dirty_count", lambda r: 2)
+    monkeypatch.setattr(cm, "dirty_count", lambda r: 0)
 
     def fake_run(cmd, **kw):
         rc = 0 if "good" in cmd else 1
@@ -157,3 +173,10 @@ def test_infer_repos_from_transcript_uses_only_mutating_calls(tmp_path):
     ]
     got = cm.infer_repos_from_transcript(msgs, root=root)
     assert [Path(g).name for g in got] == ["mine"]
+
+
+def test_scope_records_dispatch_worker_cli_call(monkeypatch):
+    monkeypatch.setattr(cm, "_save_scope", lambda: None)
+    args = {"command": 'python D:/Taadaa/tools/dispatch_worker.py --workdir "D:/Taadaa/Tiktok_Reg" --file social_reg_v1.py'}
+    cm._on_post_tool_call(tool_name="terminal", result='{"exit_code": 0}', session_id="s_worker", args=args)
+    assert "D:/Taadaa/Tiktok_Reg" in cm.session_repos("s_worker")
