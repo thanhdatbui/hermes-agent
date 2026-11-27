@@ -208,10 +208,35 @@ def repos_in_args(args: Any, root: str = CLOSEOUT_WORKSPACE) -> List[str]:
         blob = str(args)
     blob = re.sub(r"/+", "/", blob.replace("\\", "/")).lower()
     base = re.sub(r"/+", "/", root.replace("\\", "/")).lower().rstrip("/")
-    found = []
-    for name, path in _workspace_repos(root).items():
+    ws_repos = _workspace_repos(root)
+    norm_to_path: Dict[str, str] = {}
+    for name, path in ws_repos.items():
+        p_norm = re.sub(r"/+", "/", str(path).replace("\\", "/")).rstrip("/")
+        norm_to_path[p_norm.lower()] = p_norm
+        norm_to_path[f"{base}/{name.lower()}"] = p_norm
+
+    # Step 1: prioritize explicit --workdir or --repo target if it matches a workspace repo
+    explicit_targets: List[str] = []
+    for m in re.finditer(r"(?:--workdir|--repo)(?:=|\s+)(?:/?[\"'])?([^\s\"'\\]+(?:/[^\s\"'\\]+)*)", blob):
+        cand = m.group(1).rstrip('/"\'')
+        matched = norm_to_path.get(cand)
+        if not matched:
+            for k, p in norm_to_path.items():
+                if cand == k or cand.startswith(k + "/"):
+                    matched = p
+                    break
+        if matched and matched not in explicit_targets:
+            explicit_targets.append(matched)
+
+    if explicit_targets:
+        return explicit_targets
+
+    found: List[str] = []
+    for name, path in ws_repos.items():
         if re.search(re.escape(f"{base}/{name.lower()}") + r"(?![\w\-])", blob):
-            found.append(str(path).replace("\\", "/"))
+            p_norm = re.sub(r"/+", "/", str(path).replace("\\", "/")).rstrip("/")
+            if p_norm not in found:
+                found.append(p_norm)
     return found
 
 
