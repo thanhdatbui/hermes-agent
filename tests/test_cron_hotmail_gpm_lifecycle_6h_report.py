@@ -360,7 +360,7 @@ class TestStateRobustness(ReportTestCase):
         self.assertEqual(sum(kibe["buckets"].values()), 7)
         # timestamp hỏng không được tính là đã login/reg
         self.assertEqual(kibe["chatgpt_ok"], 1)
-        self.assertEqual(kibe["login_ok"], 2)  # M05 (stage sau login) + M07 (có hotmail_login_at)
+        self.assertEqual(kibe["login_ok"], 1)  # M07 (có hotmail_login_at hợp lệ), M05 bad_ts không tính
 
         schema = [e for e in tel.events if e["event"] == "profile_schema_warning"]
         self.assertEqual(len(schema), 1)

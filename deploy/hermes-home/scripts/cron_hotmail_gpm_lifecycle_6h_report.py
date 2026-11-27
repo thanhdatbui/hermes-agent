@@ -280,7 +280,7 @@ def aggregate_records(records: list[dict[str, Any]], telemetry: Telemetry | None
                 matured_7d += 1
             if not rec.get("has_tiktok"):
                 missing_tiktok += 1
-        if rec["has_login"] or rec["stage"] in POST_LOGIN_STAGES:
+        if rec["has_login"]:
             login_ok += 1
         elif rec["bucket"] == STAGE_HOTMAIL_LOGIN:
             login_pending += 1
