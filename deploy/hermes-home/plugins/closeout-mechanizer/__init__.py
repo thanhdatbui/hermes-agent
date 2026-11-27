@@ -253,7 +253,19 @@ def record_scope(session_id: str, repos: List[str]) -> None:
 
 def session_repos(session_id: str) -> List[str]:
     with _scope_lock:
-        return list(_session_repos.get(session_id or "", []))
+        repos = list(_session_repos.get(session_id or "", []))
+    # Step 1: filter out runner utility repo 'tools' unless it has unpushed commits
+    filtered = []
+    for r in repos:
+        r_norm = str(r).replace("\\", "/").rstrip("/")
+        if r_norm.lower().endswith("/tools"):
+            # Check if this session actually committed code to tools
+            has_commit = _has_real_commit(r)
+            ahead = _ahead_count(r) if has_commit else 0
+            if ahead == 0:
+                continue
+        filtered.append(r)
+    return filtered
 
 
 def _gate_one(repo: str):
