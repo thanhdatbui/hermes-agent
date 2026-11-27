@@ -45,6 +45,8 @@ fallback_providers:
 - model: ag-gemini-pool-3
   provider: omni
 agent:
+  disabled_toolsets:
+  - memory
   minimal_system_prompt: true
   max_turns: 100
   gateway_timeout: 3600
@@ -461,7 +463,6 @@ platform_toolsets:
   - file
   - image_gen
   - kanban
-  - memory
   - session_search
   - skills
   - terminal
@@ -492,7 +493,6 @@ platform_toolsets:
   - file
   - image_gen
   - kanban
-  - memory
   - session_search
   - skills
   - terminal
