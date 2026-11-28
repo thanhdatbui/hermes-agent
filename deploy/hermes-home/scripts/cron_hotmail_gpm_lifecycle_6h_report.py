@@ -472,8 +472,8 @@ def check_ip_cooldown(path: Path, profiles: dict[str, Any], now: datetime) -> di
         if isinstance(p, dict) and p.get("stage") == "HOTMAIL_LOGIN" and p.get("status") == "PENDING":
             port = str(p.get("proxy_port") or "")
             ts = _parse_time((ip_h.get(port) or {}).get("HOTMAIL_LOGIN"))
-            if ts and (now - ts).total_seconds() < 86400:
-                cd_accs, min_rem = cd_accs + 1, min(min_rem or 86400, 86400 - (now - ts).total_seconds())
+            if ts and (now - ts).total_seconds() < 14400:
+                cd_accs, min_rem = cd_accs + 1, min(min_rem or 14400, 14400 - (now - ts).total_seconds())
                 cd_ports.add(port)
     return {"count": cd_accs, "ports": len(cd_ports), "min_h": round(min_rem / 3600, 1) if min_rem else 0.0}
 
@@ -632,7 +632,7 @@ def render_report(snapshot: dict[str, Any], prev_snapshot: dict[str, Any] | None
     if tot_cd > 0:
         cd_parts = [f"{lbl}: {d['count']}/{d['ports']} cổng (mở sau ~{d['min_h']}h)" for lbl, d in (("Kibe", k_cd), ("Admin", a_cd)) if d.get("count")]
         idx_b = next((i for i, l in enumerate(lines) if "Đang Cooldown 48h" in l), len(lines))
-        lines.insert(idx_b, f"    - Chờ giãn cách IP 24h     : {tot_cd} ({' | '.join(cd_parts)})")
+        lines.insert(idx_b, f"    - Chờ giãn cách IP 4h      : {tot_cd} ({' | '.join(cd_parts)})")
     if prev_snapshot:
         lines.insert(2, f"• So sánh với lần trước: {prev_snapshot.get('timestamp', 'không rõ')}")
     if t["blocked"] > 0:
