@@ -38,7 +38,6 @@ CLUSTERS = [
     {
         "name": "kibe",
         "label": "FARM KIBE - MÁY 1-80",
-        "workbook": r"D:\OneDrive\TaadaaData\kibe\Tik1.xlsx",
         "adb_socket": None,
         "adb_args": [],
         "fleet_range": (1, 80),
@@ -47,11 +46,10 @@ CLUSTERS = [
     {
         "name": "admin",
         "label": "FARM ADMIN - MÁY 201-280",
-        "workbook": r"D:\OneDrive\TaadaaData\admin\Tik1.xlsx",
-        "adb_socket": "tcp:192.168.110.119:5037",
-        "adb_args": ["-H", "192.168.110.119", "-P", "5037"],
+        "ssh_host": "admin-farm",
+        "remote_script": r"D:\Taadaa\automation-core\scripts\clear-tiktok-cache.py",
         "fleet_range": (201, 280),
-        "max_workers": 5,
+        "max_workers": 15,
     },
 ]
 
@@ -85,8 +83,34 @@ def is_feed_runner_active() -> bool:
 
 def get_connected_devices(cluster: dict) -> dict[str, str]:
     """Map serial -> device state for one ADB cluster and track reachability."""
-    adb_cmd = [ADB, *cluster["adb_args"], "devices"]
+    # Step 1: Probe connected devices for the target cluster
     cluster["reachable"] = False
+    if cluster.get("ssh_host"):
+        for attempt in range(2):
+            try:
+                proc = subprocess.run(
+                    ["python", "D:/Taadaa/tools/admin_ssh.py", "--powershell", "--timeout", "15",
+                     "python D:/Taadaa/tools/inspect_machine.py --list"],
+                    capture_output=True, text=True, timeout=20, creationflags=subprocess.CREATE_NO_WINDOW
+                )
+                if proc.returncode != 0:
+                    raise RuntimeError(proc.stderr.strip() or f"ssh adb exited with code {proc.returncode}")
+                cluster["reachable"] = True
+                devices = {}
+                for line in proc.stdout.strip().splitlines():
+                    parts = line.strip().split()
+                    if len(parts) >= 2 and parts[1] == "device":
+                        devices[parts[0]] = parts[1]
+                return devices
+            except Exception as exc:
+                if attempt == 0:
+                    time.sleep(2)
+                    continue
+                sys.stderr.write(f"[WARN] Failed to get adb devices for {cluster['name']} via ssh: {exc}\n")
+                return {}
+        return {}
+
+    adb_cmd = [ADB, *cluster.get("adb_args", []), "devices"]
     for attempt in range(2):
         try:
             proc = subprocess.run(adb_cmd, capture_output=True, text=True, timeout=15, creationflags=subprocess.CREATE_NO_WINDOW)
@@ -110,31 +134,24 @@ def get_connected_devices(cluster: dict) -> dict[str, str]:
 
 
 def load_machine_serials(cluster: dict) -> list[tuple[int, str]]:
-    """Read machine number and serial from a cluster's Tik1.xlsx."""
-    workbook = cluster["workbook"]
-    if not os.path.exists(workbook):
-        return []
-    import openpyxl
-    wb = openpyxl.load_workbook(workbook, data_only=True)
-    ws = wb.active
+    """Read machine number and serial from SQLite SSOT (farm_master.db machines) for a cluster."""
+    from automation_core import farm_db
     min_machine, max_machine = cluster["fleet_range"]
+    try:
+        machines = farm_db.load_machines()
+    except farm_db.FarmDbError:
+        return []
     res = []
-    for r in range(2, ws.max_row + 1):
-        m_val = ws.cell(r, 1).value
-        s_val = ws.cell(r, 2).value
-        if m_val is not None and s_val is not None:
-            try:
-                m_num = int(m_val)
-                serial = str(s_val).strip()
-                if serial and min_machine <= m_num <= max_machine:
-                    res.append((m_num, serial))
-            except (TypeError, ValueError):
-                continue
+    for m_num in sorted(machines):
+        serial = str(machines[m_num].get("serial") or "").strip()
+        if serial and min_machine <= m_num <= max_machine:
+            res.append((m_num, serial))
     return res
 
 
 def clear_device_cache(m_num: int, serial: str, cluster: dict) -> tuple[int, str, bool, str, str]:
     """Process one device in its cluster: lock -> clear cache -> force stop -> home."""
+    # Step 2: Route cache clear execution to local or remote cluster
     c_name = cluster.get("name", "unknown")
     if DeviceLock is None:
         return m_num, serial, False, f"[ERROR] Machine {m_num}: DeviceLock not available", c_name
@@ -152,13 +169,19 @@ def clear_device_cache(m_num: int, serial: str, cluster: dict) -> tuple[int, str
     except Exception as exc:
         return m_num, serial, False, f"[ERROR] Machine {m_num} lock init failed: {exc}", c_name
 
-    cmd = [
-        CHILD_PYTHON,
-        SCRIPT_PATH,
-        "--machine", str(m_num),
-        "--serial", serial,
-        "--widget-pos", f"{DEFAULT_WIDGET_POS[0]},{DEFAULT_WIDGET_POS[1]}",
-    ]
+    if cluster.get("ssh_host"):
+        cmd = [
+            "python", "D:/Taadaa/tools/admin_ssh.py", "--powershell", "--timeout", "250",
+            f"& '{CHILD_PYTHON}' '{cluster['remote_script']}' --machine {m_num} --serial '{serial}' --widget-pos '{DEFAULT_WIDGET_POS[0]},{DEFAULT_WIDGET_POS[1]}'"
+        ]
+    else:
+        cmd = [
+            CHILD_PYTHON,
+            SCRIPT_PATH,
+            "--machine", str(m_num),
+            "--serial", serial,
+            "--widget-pos", f"{DEFAULT_WIDGET_POS[0]},{DEFAULT_WIDGET_POS[1]}",
+        ]
     env = os.environ.copy()
     env["PYTHONPATH"] = r"D:\Taadaa\automation-core\src;D:\Taadaa\tiktok-luot nuoi acc"
     if cluster.get("adb_socket"):
@@ -171,7 +194,7 @@ def clear_device_cache(m_num: int, serial: str, cluster: dict) -> tuple[int, str
     try:
         with lock:
             try:
-                p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=240, creationflags=subprocess.CREATE_NO_WINDOW)
+                p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=260, creationflags=subprocess.CREATE_NO_WINDOW)
                 out = p.stdout.strip() or p.stderr.strip()
                 if p.returncode == 0:
                     msg = f"[OK] Machine {m_num}: {out}"
@@ -183,22 +206,23 @@ def clear_device_cache(m_num: int, serial: str, cluster: dict) -> tuple[int, str
             except Exception as exc:
                 msg = f"[ERROR] Machine {m_num} [{serial}] error: {exc}"
             finally:
-                try:
-                    subprocess.run(
-                        [
-                            ADB, *cluster["adb_args"], "-s", serial, "shell",
-                            "am force-stop com.ss.android.ugc.trill; "
-                            "input keyevent KEYCODE_HOME; "
-                            "settings put system accelerometer_rotation 0; "
-                            "settings put system user_rotation 0"
-                        ],
-                        env=env,
-                        capture_output=True,
-                        timeout=10,
-                        creationflags=subprocess.CREATE_NO_WINDOW,
-                    )
-                except Exception:
-                    pass
+                if not cluster.get("ssh_host"):
+                    try:
+                        subprocess.run(
+                            [
+                                ADB, *cluster.get("adb_args", []), "-s", serial, "shell",
+                                "am force-stop com.ss.android.ugc.trill; "
+                                "input keyevent KEYCODE_HOME; "
+                                "settings put system accelerometer_rotation 0; "
+                                "settings put system user_rotation 0"
+                            ],
+                            env=env,
+                            capture_output=True,
+                            timeout=10,
+                            creationflags=subprocess.CREATE_NO_WINDOW,
+                        )
+                    except Exception:
+                        pass
     except (DeviceLockUnavailable, DeviceLockNeedsUserDecision):
         return m_num, serial, False, f"[LOCKED] Machine {m_num} is busy", cluster["name"]
     except Exception as exc:

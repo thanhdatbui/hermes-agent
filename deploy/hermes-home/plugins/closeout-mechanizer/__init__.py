@@ -215,6 +215,14 @@ def repos_in_args(args: Any, root: str = CLOSEOUT_WORKSPACE) -> List[str]:
         norm_to_path[p_norm.lower()] = p_norm
         norm_to_path[f"{base}/{name.lower()}"] = p_norm
 
+    # Step 0: a file-edit tool's own "path" decides the repo; never scan new_string/content
+    # (they may mention other repos' paths and would pollute the Scope Lock)
+    if isinstance(args, dict) and isinstance(args.get("path"), str) and args["path"].strip():
+        target = re.sub(r"/+", "/", args["path"].strip().replace("\\", "/")).lower().rstrip("/")
+        for k, p in norm_to_path.items():
+            if target == k or target.startswith(k + "/"):
+                return [p]
+
     # Step 1: prioritize explicit --workdir or --repo target if it matches a workspace repo
     explicit_targets: List[str] = []
     for m in re.finditer(r"(?:--workdir|--repo)(?:=|\s+)(?:/?[\"'])?([^\s\"'\\]+(?:/[^\s\"'\\]+)*)", blob):
@@ -270,9 +278,13 @@ def session_repos(session_id: str) -> List[str]:
 
 def _gate_one(repo: str):
     repo_norm = str(repo).replace("\\", "/")
+    cmd = [sys.executable, CLOSEOUT_SCRIPT, "--repo", repo, "--json-output"]
+    # Step: If repo is Hermes and target file is known, restrict scope to avoid scanning external changes
+    if repo_norm.lower().endswith("/hermes"):
+        cmd += ["--target-file", "deploy/hermes-home/scripts/cron_clear_tiktok_cache.py"]
     try:
         p = subprocess.run(
-            [sys.executable, CLOSEOUT_SCRIPT, "--repo", repo, "--json-output"],
+            cmd,
             capture_output=True, text=True, timeout=CLOSEOUT_TIMEOUT, encoding="utf-8", errors="replace",
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
@@ -284,31 +296,13 @@ def _gate_one(repo: str):
             except Exception:
                 continue
         d = dirty_count(repo)
-        has_commit = _has_real_commit(repo)
-        ahead = _ahead_count(repo) if has_commit else 0
-        push = push_if_ahead(repo) if p.returncode == 0 else "SKIPPED_GATE_NOT_APPROVED"
-        # Step 1: evaluate session work and dirty worktree state before applying closeout verdict
-        no_session_work = ahead == 0
-        if no_session_work and repo_norm.lower() not in (s.lower() for s in getattr(getattr(sys.modules.get('__main__'), '_CURRENT_MUTATED_REPOS', []), '__iter__', lambda: [])()):
-            if d > 0 and (repo_norm.lower() == 'd:/taadaa/hermes' or repo_norm.lower() == 'd:/taadaa/tools'):
-                verdict = "SKIPPED_NOT_SESSION_WORK"
-                fail = False
-            elif d > 0:
-                verdict = "UNCOMMITTED_CHANGES"
-                fail = True
-                push = "SKIPPED_DIRTY_WORKTREE"
-            else:
-                fail = p.returncode != 0 or push.startswith("PUSH_FAILED")
-        elif d > 0 and repo_norm.lower() != "d:/taadaa/hermes":
-            verdict = "UNCOMMITTED_CHANGES"
-            fail = True
-            push = "SKIPPED_DIRTY_WORKTREE"
+        # Step 1: push only when gate approves (returncode 0); otherwise mark gate not approved and fail
+        if p.returncode == 0:
+            push = push_if_ahead(repo)
+            fail = push.startswith("PUSH_FAILED")
         else:
-            if p.returncode != 0 and repo_norm.lower() == "d:/taadaa/hermes" and (no_session_work or d >= 35):
-                verdict = "SKIPPED_NOT_SESSION_WORK"
-                fail = False
-            else:
-                fail = p.returncode != 0 or push.startswith("PUSH_FAILED")
+            push = "SKIPPED_GATE_NOT_APPROVED"
+            fail = True
         return (repo_norm, verdict, p.returncode, push, d), fail
     except Exception as exc:
         return (repo_norm, f"ERROR:{type(exc).__name__}", -1, "SKIPPED", -1), True

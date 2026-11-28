@@ -18,11 +18,11 @@ class TestCronClearTiktokCacheDualCluster(unittest.TestCase):
         self.assertIn("admin", cluster_names, "CLUSTERS must include 'admin'")
 
         admin_cluster = next(c for c in ctc.CLUSTERS if c["name"] == "admin")
-        self.assertIn("adb_socket", admin_cluster, "Admin cluster must specify adb_socket")
-        self.assertEqual(admin_cluster["adb_socket"], "tcp:192.168.110.119:5037")
+        self.assertEqual(admin_cluster.get("ssh_host"), "admin-farm")
+        self.assertIn("clear-tiktok-cache.py", admin_cluster.get("remote_script", ""))
 
         kibe_cluster = next(c for c in ctc.CLUSTERS if c["name"] == "kibe")
-        self.assertIsNone(kibe_cluster.get("adb_socket"), "Kibe cluster should not specify remote socket")
+        self.assertIsNone(kibe_cluster.get("ssh_host"), "Kibe cluster should run locally")
 
     def test_shared_state_disjoint_fleet_ranges_no_collision(self):
         import cron_clear_tiktok_cache as ctc
@@ -39,28 +39,18 @@ class TestCronClearTiktokCacheDualCluster(unittest.TestCase):
                 )
             ranges[c["name"]] = s
 
-    @patch("openpyxl.load_workbook")
-    def test_load_machine_serials_hermetic_parsing(self, mock_load_wb):
+    @patch("automation_core.farm_db.load_machines")
+    def test_load_machine_serials_hermetic_parsing(self, mock_load_machines):
         import cron_clear_tiktok_cache as ctc
-        mock_wb = MagicMock()
-        mock_ws = MagicMock()
-        mock_wb.active = mock_ws
-        # Mock rows: header, valid machine, out-of-range machine, invalid serial, empty row
-        mock_ws.max_row = 5
-        mock_ws.cell.side_effect = lambda r, c: MagicMock(
-            value={
-                (2, 1): 5, (2, 2): "s_valid_5",
-                (3, 1): 205, (3, 2): "s_out_of_range",
-                (4, 1): "invalid", (4, 2): "s_bad",
-                (5, 1): None, (5, 2): None,
-            }.get((r, c), None)
-        )
-        mock_load_wb.return_value = mock_wb
+        mock_load_machines.return_value = {
+            5: {"serial": "s_valid_5"},
+            205: {"serial": "s_out_of_range"},
+            4: {"serial": ""},
+        }
 
-        with patch("os.path.exists", return_value=True):
-            kibe_cluster = next(c for c in ctc.CLUSTERS if c["name"] == "kibe")
-            serials = ctc.load_machine_serials(kibe_cluster)
-            self.assertEqual(serials, [(5, "s_valid_5")])
+        kibe_cluster = next(c for c in ctc.CLUSTERS if c["name"] == "kibe")
+        serials = ctc.load_machine_serials(kibe_cluster)
+        self.assertEqual(serials, [(5, "s_valid_5")])
 
     @patch("cron_clear_tiktok_cache.subprocess.run")
     @patch("cron_clear_tiktok_cache.DeviceLock")
@@ -85,18 +75,10 @@ class TestCronClearTiktokCacheDualCluster(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(c_name, "admin")
 
-        # Verify child command environment included ADB_SERVER_SOCKET
         child_call = mock_subproc.call_args_list[0]
-        child_env = child_call[1].get("env", {})
-        self.assertEqual(child_env.get("ADB_SERVER_SOCKET"), "tcp:192.168.110.119:5037")
-
-        # Verify teardown adb call included host & port arguments
-        teardown_call = mock_subproc.call_args_list[1]
-        teardown_cmd = teardown_call[0][0]
-        self.assertIn("-H", teardown_cmd)
-        self.assertIn("192.168.110.119", teardown_cmd)
-        self.assertIn("-P", teardown_cmd)
-        self.assertIn("5037", teardown_cmd)
+        cmd_args = child_call[0][0]
+        self.assertIn("admin_ssh.py", " ".join(cmd_args))
+        self.assertIn("201", " ".join(cmd_args))
 
     @patch("cron_clear_tiktok_cache.subprocess.run")
     @patch("cron_clear_tiktok_cache.DeviceLock")
@@ -143,8 +125,8 @@ class TestCronClearTiktokCacheDualCluster(unittest.TestCase):
         mock_proc.stderr = "Script failed"
         mock_subproc.return_value = mock_proc
 
-        admin_cluster = next(c for c in ctc.CLUSTERS if c["name"] == "admin")
-        m_num, serial, ok, msg, c_name = ctc.clear_device_cache(201, "ce071827e07a093701", admin_cluster)
+        kibe_cluster = next(c for c in ctc.CLUSTERS if c["name"] == "kibe")
+        m_num, serial, ok, msg, c_name = ctc.clear_device_cache(1, "ce0616061a74682305", kibe_cluster)
 
         self.assertFalse(ok)
         self.assertIn("[WARN]", msg)
