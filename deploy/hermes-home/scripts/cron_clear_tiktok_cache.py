@@ -245,8 +245,8 @@ def _send_clear_cache_alert(error_reason: str) -> None:
         sys.stderr.write(f"[ALERT FAILED] {exc}\n")
 
 
-def is_ca4_finished(today_str: str) -> bool:
-    """Kiểm tra ca tối (Ca 3) hoàn tất để dọn cache ban đêm (do đã bỏ Ca 4)."""
+def is_ca3_finished() -> bool:
+    """Kiểm tra ca tối (Ca 3) của ngày hôm trước đã hoàn tất để dọn cache ban đêm."""
     if not REPORTED_FILE.is_file():
         return False
     try:
@@ -257,8 +257,6 @@ def is_ca4_finished(today_str: str) -> bool:
         return (
             f"{yesterday_str}_ca3_phien2" in sessions
             or f"{yesterday_str}_ca3" in sessions
-            or f"{today_str}_ca4_phien2" in sessions
-            or f"{today_str}_ca4" in sessions
         )
     except Exception:
         return False
@@ -299,9 +297,8 @@ def main() -> int:
     now_hour = datetime.now().hour
 
     if not args.force:
-        is_night_window = (3 <= now_hour <= 5) and is_ca4_finished(today_str)
-        is_noon_catchup_window = (14 <= now_hour <= 18)
-        if not (is_night_window or is_noon_catchup_window):
+        is_night_window = (3 <= now_hour <= 5) and is_ca3_finished()
+        if not is_night_window:
             return 0
         if is_feed_runner_active():
             return 0
